@@ -300,7 +300,7 @@ def get_DER(all_reference, all_hypothesis):
     Miss (float): Miss Detection 
 
     """
-    metric = DiarizationErrorRate(collar=0.25, skip_overlap=True)
+    metric = DiarizationErrorRate(collar=0.5, skip_overlap=True)
     DER = 0
 
     for reference, hypothesis in zip(all_reference, all_hypothesis):
