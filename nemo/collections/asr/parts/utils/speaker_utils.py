@@ -342,8 +342,8 @@ def perform_diarization(
     if len(all_reference) and len(all_hypothesis):
         DER, CER, FA, MISS = get_DER(all_reference, all_hypothesis)
         logging.info(
-            "Cumulative results of all the files:  \n FA: {:.3f}\t MISS {:.3f}\t \
-                Diarization ER: {:.3f}\t, Confusion ER:{:.3f}".format(
+            "Cumulative results of all the files:  \n FA: {:.4f}\t MISS {:.4f}\t \
+                Diarization ER: {:.4f}\t, Confusion ER:{:.4f}".format(
                 FA, MISS, DER, CER
             )
         )
