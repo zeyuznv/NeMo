@@ -23,6 +23,7 @@ from nemo_text_processing.text_normalization.graph_utils import (
     delete_space,
     insert_space,
 )
+from pynini.lib.pynutil import insert
 
 try:
     import pynini
@@ -48,76 +49,76 @@ class TimeFst(GraphFst):
         super().__init__(name="time", kind="classify")
         # hours, minutes, seconds, suffix, zone, style, speak_period
 
-        suffix_graph = pynini.string_file(get_abs_path("data/time/time_suffix.tsv"))
-        time_zone_graph = pynini.invert(pynini.string_file(get_abs_path("data/time/time_zone.tsv")))
-        time_to_graph = pynini.string_file(get_abs_path("data/time/time_to.tsv"))
+        time_zone = pynini.invert(pynini.string_file(get_abs_path("data/time/time_zone.tsv")))
+        hour_to = pynini.string_file(get_abs_path("data/time/hour_to.tsv"))
+        minute_to = pynini.string_file(get_abs_path("data/time/minute_to.tsv"))
+        hour = pynini.string_file(get_abs_path("data/time/hour.tsv"))
+        minute = pynini.string_file(get_abs_path("data/time/minute.tsv"))
+        half = pynini.cross("halb", "30")
+        quarters = pynini.cross("viertel", "15") | pynini.cross("drei viertel", "45")
 
         # only used for < 1000 thousand -> 0 weight
         cardinal = pynutil.add_weight(CardinalFst().graph_no_exception, weight=-0.7)
+        oclock = pynutil.delete("uhr")
 
-        labels_hour = [num_to_word(x) for x in range(0, 24)]
-        labels_minute_single = [num_to_word(x) for x in range(1, 10)]
-        labels_minute_double = [num_to_word(x) for x in range(10, 60)]
-
-        graph_hour = pynini.union(*labels_hour) @ cardinal
-
-        graph_minute_single = pynini.union(*labels_minute_single) @ cardinal
-        graph_minute_double = pynini.union(*labels_minute_double) @ cardinal
-        graph_minute_verbose = pynini.cross("half", "30") | pynini.cross("quarter", "15")
-        oclock = pynini.cross(pynini.union("o' clock", "o clock", "o'clock", "oclock"), "")
-
-        final_graph_hour = pynutil.insert("hours: \"") + graph_hour + pynutil.insert("\"")
+        final_graph_hour = pynutil.insert("hours: \"") + hour + pynutil.insert("\"")
+        # "[..] uhr (zwanzig)"
         final_graph_minute = (
-            pynutil.insert("minutes: \"")
-            + (
-                pynutil.insert("00")
-                | oclock + pynutil.insert("00")
-                | pynutil.delete("o") + delete_space + graph_minute_single
-                | graph_minute_double
-            )
+            oclock
+            + pynutil.insert("minutes: \"")
+            + (pynutil.insert("00") | delete_space + minute)
             + pynutil.insert("\"")
         )
-        final_suffix = pynutil.insert("suffix: \"") + convert_space(suffix_graph) + pynutil.insert("\"")
-        final_suffix_optional = pynini.closure(delete_space + insert_space + final_suffix, 0, 1)
         final_time_zone_optional = pynini.closure(
-            delete_space
-            + insert_space
-            + pynutil.insert("zone: \"")
-            + convert_space(time_zone_graph)
-            + pynutil.insert("\""),
+            delete_space + insert_space + pynutil.insert("zone: \"") + convert_space(time_zone) + pynutil.insert("\""),
             0,
             1,
         )
 
-        # five o' clock
-        # two o eight, two thiry five (am/pm)
-        # two pm/am
+        # vier uhr
+        # vier uhr zehn
+        # vierzehn uhr zehn
         graph_hm = final_graph_hour + delete_extra_space + final_graph_minute
-        # 10 past four, quarter past four, half past four
-        graph_mh = (
-            pynutil.insert("minutes: \"")
-            + pynini.union(graph_minute_single, graph_minute_double, graph_minute_verbose)
-            + pynutil.insert("\"")
-            + delete_space
-            + pynutil.delete("past")
-            + delete_extra_space
-            + final_graph_hour
-        )
 
-        graph_quarter_time = (
+        # 10 nach vier, vierzehn nach vier, viertel nach vier
+        graph_m_nach_h = (
             pynutil.insert("minutes: \"")
-            + pynini.cross("quarter", "45")
+            + pynini.union(minute + pynini.closure(delete_space + pynutil.delete("minuten"), 0, 1), quarters)
             + pynutil.insert("\"")
             + delete_space
-            + pynutil.delete(pynini.union("to", "till"))
+            + pynutil.delete("nach")
             + delete_extra_space
             + pynutil.insert("hours: \"")
-            + time_to_graph
+            + hour
             + pynutil.insert("\"")
         )
-        final_graph = (
-            (graph_hm | graph_mh | graph_quarter_time) + final_suffix_optional + final_time_zone_optional
-        ).optimize()
+
+        # 10 vor vier,  viertel vor vier
+        graph_m_vor_h = (
+            pynutil.insert("minutes: \"")
+            + pynini.union(minute + pynini.closure(delete_space + pynutil.delete("minuten"), 0, 1), quarters)
+            @ minute_to
+            + pynutil.insert("\"")
+            + delete_space
+            + pynutil.delete("vor")
+            + delete_extra_space
+            + pynutil.insert("hours: \"")
+            + hour @ hour_to
+            + pynutil.insert("\"")
+        )
+
+        # viertel zehn,  drei viertel vier, halb zehn
+        graph_mh = (
+            pynutil.insert("minutes: \"")
+            + pynini.union(half, quarters)
+            + pynutil.insert("\"")
+            + delete_extra_space
+            + pynutil.insert("hours: \"")
+            + hour @ hour_to
+            + pynutil.insert("\"")
+        )
+
+        final_graph = ((graph_hm | graph_mh | graph_m_vor_h | graph_m_nach_h) + final_time_zone_optional).optimize()
 
         final_graph = self.add_tokens(final_graph)
 
