@@ -18,6 +18,7 @@ import pickle as pkl
 from copy import deepcopy
 
 import numpy as np
+import torch
 from omegaconf import ListConfig
 from pyannote.core import Annotation, Segment
 from pyannote.metrics.diarization import DiarizationErrorRate
@@ -251,13 +252,19 @@ def perform_clustering(embeddings, time_stamps, speakers, audio_rttm_map, out_rt
     all_reference = []
     no_references = False
 
+    if torch.cuda.is_available():
+        cuda = True
+    else:
+        logging.warning("cuda=False, using CPU for Eigen decompostion. This might slow down the clustering process.")
+        cuda = False
+
     for uniq_key in tqdm(embeddings.keys()):
         NUM_speakers = speakers[uniq_key]
         emb = embeddings[uniq_key]
         emb = np.asarray(emb)
 
         cluster_labels = COSclustering(
-            uniq_key, emb, oracle_num_speakers=NUM_speakers, max_num_speaker=max_num_speakers
+            uniq_key, emb, oracle_num_speakers=NUM_speakers, max_num_speaker=max_num_speakers, cuda=cuda,
         )
 
         lines = time_stamps[uniq_key]
@@ -298,6 +305,11 @@ def get_DER(all_reference, all_hypothesis):
     CER (float): Confusion Error Rate
     FA (float): False Alarm
     Miss (float): Miss Detection 
+
+    < Caveat >
+    Unlike md-eval.pl, "no score" collar in pyannote.metrics is the maximum length of
+    "no score" collar from left to right. Therefore, if 0.25s is applied for "no score"
+    collar in md-eval.pl, 0.5s should be applied for pyannote.metrics.
 
     """
     metric = DiarizationErrorRate(collar=0.5, skip_overlap=True)
@@ -363,7 +375,7 @@ def write_rttm2manifest(paths2audio_files, paths2rttm_files, manifest_file):
     manifest (str): path to write manifest file
 
     Returns:
-    manifest (str): path to write manifest file 
+    manifest (str): path to write manifest file
     """
     AUDIO_RTTM_MAP = audio_rttm_map(paths2audio_files, paths2rttm_files)
 
