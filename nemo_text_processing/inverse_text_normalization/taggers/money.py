@@ -53,27 +53,23 @@ class MoneyFst(GraphFst):
 
         unit = pynini.string_file(get_abs_path("data/currency.tsv"))
         unit_singular = pynini.invert(unit)
-        unit_plural = get_singulars(unit_singular)
+        unit = get_singulars(unit_singular) | unit_singular
 
-        graph_unit_singular = pynutil.insert("currency: \"") + convert_space(unit_singular) + pynutil.insert("\"")
-        graph_unit_plural = pynutil.insert("currency: \"") + convert_space(unit_plural) + pynutil.insert("\"")
+        graph_unit = pynutil.insert("currency: \"") + convert_space(unit) + pynutil.insert("\"")
 
         add_leading_zero_to_double_digit = (NEMO_DIGIT + NEMO_DIGIT) | (pynutil.insert("0") + NEMO_DIGIT)
         # twelve dollars (and) fifty cents, zero cents
         cents_standalone = (
             pynutil.insert("fractional_part: \"")
-            + pynini.union(
-                pynutil.add_weight(((NEMO_SIGMA - "one") @ cardinal_graph), -0.7) @ add_leading_zero_to_double_digit
-                + delete_space
-                + pynutil.delete("cents"),
-                pynini.cross("one", "01") + delete_space + pynutil.delete("cent"),
-            )
+            + (pynutil.add_weight(cardinal_graph, -0.7) @ add_leading_zero_to_double_digit)
+            + delete_space
+            + pynutil.delete("cent")
             + pynutil.insert("\"")
         )
 
         optional_cents_standalone = pynini.closure(
             delete_space
-            + pynini.closure(pynutil.delete("and") + delete_space, 0, 1)
+            + pynini.closure(pynutil.delete("und") + delete_space, 0, 1)
             + insert_space
             + cents_standalone,
             0,
@@ -91,21 +87,13 @@ class MoneyFst(GraphFst):
 
         graph_integer = (
             pynutil.insert("integer_part: \"")
-            + ((NEMO_SIGMA - "one") @ cardinal_graph)
+            + cardinal_graph
             + pynutil.insert("\"")
             + delete_extra_space
-            + graph_unit_plural
+            + graph_unit
             + (optional_cents_standalone | optional_cents_suffix)
         )
-        graph_integer |= (
-            pynutil.insert("integer_part: \"")
-            + pynini.cross("one", "1")
-            + pynutil.insert("\"")
-            + delete_extra_space
-            + graph_unit_singular
-            + (optional_cents_standalone | optional_cents_suffix)
-        )
-        graph_decimal = graph_decimal_final + delete_extra_space + graph_unit_plural
+        graph_decimal = graph_decimal_final + delete_extra_space + graph_unit
         graph_decimal |= pynutil.insert("currency: \"$\" integer_part: \"0\" ") + cents_standalone
         final_graph = graph_integer | graph_decimal
         final_graph = self.add_tokens(final_graph)
