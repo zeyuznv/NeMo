@@ -10,6 +10,7 @@ elftem~11tem
 dreizehntem~13tem
 ein und zwanzigstes~21tes
 drei und zwanzigstes~23tes
+dreiundzwanzigstes~23tes
 ein hundert elftes~111tes
 ein tausendstem~1000tem
 ein hundert ein und zwanzigste~121te

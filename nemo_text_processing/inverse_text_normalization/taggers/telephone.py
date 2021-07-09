@@ -36,7 +36,10 @@ class TelephoneFst(GraphFst):
         delete_space = pynutil.delete(' ')
         # country code, number_part, extension
         add_separator = pynutil.insert(" ")  # between components
-        digit = pynini.invert(pynini.string_file(get_abs_path("data/numbers/digit.tsv")) | pynini.string_file(get_abs_path("data/numbers/zero.tsv"))).optimize() 
+        digit = pynini.invert(
+            pynini.string_file(get_abs_path("data/numbers/digit.tsv"))
+            | pynini.string_file(get_abs_path("data/numbers/zero.tsv"))
+        ).optimize()
 
         number_part = (
             (

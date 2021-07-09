@@ -49,24 +49,18 @@ class MeasureFst(GraphFst):
 
         graph_unit = pynini.string_file(get_abs_path("data/measurements.tsv"))
         graph_unit_singular = pynini.invert(graph_unit)  # singular -> abbr
-        graph_unit_plural = get_singulars(graph_unit_singular)  # plural -> abbr
+        unit = get_singulars(graph_unit_singular) | graph_unit_singular  # plural -> abbr
 
         optional_graph_negative = pynini.closure(
             pynutil.insert("negative: ") + pynini.cross("minus", "\"true\"") + delete_extra_space, 0, 1
         )
 
-        unit_singular = convert_space(graph_unit_singular)
-        unit_plural = convert_space(graph_unit_plural)
-        unit_misc = pynutil.insert("/") + pynutil.delete("per") + delete_space + convert_space(graph_unit_singular)
+        unit = convert_space(unit)
+        unit_misc = pynutil.insert("/") + pynutil.delete("pro") + delete_space + convert_space(graph_unit_singular)
 
-        unit_singular = (
+        unit = (
             pynutil.insert("units: \"")
-            + (unit_singular | unit_misc | pynutil.add_weight(unit_singular + delete_space + unit_misc, 0.01))
-            + pynutil.insert("\"")
-        )
-        unit_plural = (
-            pynutil.insert("units: \"")
-            + (unit_plural | unit_misc | pynutil.add_weight(unit_plural + delete_space + unit_misc, 0.01))
+            + (unit | unit_misc | pynutil.add_weight(unit + delete_space + unit_misc, 0.01))
             + pynutil.insert("\"")
         )
 
@@ -76,27 +70,17 @@ class MeasureFst(GraphFst):
             + decimal.final_graph_wo_negative
             + pynutil.insert(" }")
             + delete_extra_space
-            + unit_plural
+            + unit
         )
         subgraph_cardinal = (
             pynutil.insert("cardinal { ")
             + optional_graph_negative
             + pynutil.insert("integer: \"")
-            + ((NEMO_SIGMA - "one") @ cardinal_graph)
+            + cardinal_graph
             + pynutil.insert("\"")
             + pynutil.insert(" }")
             + delete_extra_space
-            + unit_plural
-        )
-        subgraph_cardinal |= (
-            pynutil.insert("cardinal { ")
-            + optional_graph_negative
-            + pynutil.insert("integer: \"")
-            + pynini.cross("one", "1")
-            + pynutil.insert("\"")
-            + pynutil.insert(" }")
-            + delete_extra_space
-            + unit_singular
+            + unit
         )
         final_graph = subgraph_decimal | subgraph_cardinal
         final_graph = self.add_tokens(final_graph)

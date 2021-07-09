@@ -84,6 +84,7 @@ class CardinalFst(GraphFst):
             get_abs_path("data/numbers/digit.tsv"), get_abs_path("data/numbers/ties.tsv")
         )
         graph_ties = graph_ties_digit | (graph_ties + pynutil.insert("0"))
+        self.graph_ties = graph_ties
 
         graph_hundred_component = pynini.union(graph_digit + delete_space + graph_hundred, pynutil.insert("0"))
         graph_hundred_component += delete_space

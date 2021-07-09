@@ -32,7 +32,6 @@ except (ModuleNotFoundError, ImportError):
 class DateFst(GraphFst):
     """
     Finite state transducer for verbalizing date, e.g.
-        date { month: "january" day: "5" year: "2012" preserve_order: true } -> february 5 2012
         date { day: "5" month: "january" year: "2012" preserve_order: true } -> 5 february 2012
     """
 
@@ -61,14 +60,11 @@ class DateFst(GraphFst):
             + pynutil.delete("\"")
         )
 
-        # month (day) year
-        graph_mdy = (
-            month + pynini.closure(delete_extra_space + day, 0, 1) + pynini.closure(delete_extra_space + year, 0, 1)
-        )
-
         # (day) month year
         graph_dmy = (
-            pynini.closure(day + delete_extra_space, 0, 1) + month + pynini.closure(delete_extra_space + year, 0, 1)
+            pynini.closure(day + delete_extra_space, 0, 1)
+            + month
+            + pynini.closure(delete_space + pynutil.insert(", ") + year, 0, 1)
         )
 
         optional_preserve_order = pynini.closure(
@@ -81,7 +77,7 @@ class DateFst(GraphFst):
             + delete_space
         )
 
-        final_graph = (graph_mdy | year | graph_dmy) + delete_space + optional_preserve_order
+        final_graph = (year | graph_dmy) + delete_space + optional_preserve_order
 
         delete_tokens = self.delete_tokens(final_graph)
         self.fst = delete_tokens.optimize()

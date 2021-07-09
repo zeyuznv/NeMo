@@ -51,14 +51,23 @@ try:
     suppletive = pynini.string_file(get_abs_path("data/suppletive.tsv"))
     # _v = pynini.union("a", "e", "i", "o", "u")
     _c = pynini.union(
-        "b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z"
+        "b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z", "ß"
     )
-    _ies = NEMO_SIGMA + _c + pynini.cross("y", "ies")
-    _es = NEMO_SIGMA + pynini.union("s", "sh", "ch", "x", "z") + pynutil.insert("es")
-    _s = NEMO_SIGMA + pynutil.insert("s")
+    # plural endung n/en maskuline Nomen mit den Endungen e, ent, and, ant, ist, or
+    _n = NEMO_SIGMA + pynini.union("e") + pynutil.insert("n")
+    _en = (
+        NEMO_SIGMA
+        + pynini.union("ent", "and", "ant", "ist", "or", "ion", "ik", "heit", "keit", "schaft", "tät", "ung")
+        + pynutil.insert("en")
+    )
+    _nen = NEMO_SIGMA + pynini.union("in") + (pynutil.insert("e") | pynutil.insert("nen"))
+    _fremd = NEMO_SIGMA + pynini.union("ma", "um", "us") + pynutil.insert("en")
+    # maskuline Nomen mit den Endungen eur, ich, ier, ig, ling, ör
+    _e = NEMO_SIGMA + pynini.union("eur", "ich", "ier", "ig", "ling", "ör") + pynutil.insert("e")
+    _s = NEMO_SIGMA + pynini.union("a", "i", "o", "u", "y") + pynutil.insert("s")
 
     graph_plural = plurals._priority_union(
-        suppletive, plurals._priority_union(_ies, plurals._priority_union(_es, _s, NEMO_SIGMA), NEMO_SIGMA), NEMO_SIGMA
+        suppletive, pynini.union(_n, _en, _nen, _fremd, _e, _s), NEMO_SIGMA
     ).optimize()
 
     SINGULAR_TO_PLURAL = graph_plural

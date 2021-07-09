@@ -58,7 +58,7 @@ class DecimalFst(GraphFst):
     """
     Finite state transducer for classifying decimal
         e.g. minus twelve point five o o six billion -> decimal { negative: "true" integer_part: "12"  fractional_part: "5006" quantity: "billion" }
-        e.g. one billion -> decimal { integer_part: "1" quantity: "billion" }
+        e.g. eine billion -> decimal { integer_part: "1" quantity: "billion" }
     Args:
         cardinal: CardinalFst
     """
@@ -82,9 +82,7 @@ class DecimalFst(GraphFst):
 
         graph_fractional = pynutil.insert("fractional_part: \"") + graph_decimal + pynutil.insert("\"")
         graph_integer = pynutil.insert("integer_part: \"") + cardinal_graph + pynutil.insert("\"")
-        final_graph_wo_sign = (
-            pynini.closure(graph_integer + delete_extra_space, 0, 1) + point + delete_extra_space + graph_fractional
-        )
+        final_graph_wo_sign = graph_integer + delete_extra_space + point + delete_extra_space + graph_fractional
         final_graph = optional_graph_negative + final_graph_wo_sign
 
         self.final_graph_wo_negative = final_graph_wo_sign | get_quantity(
