@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from nemo_text_processing.text_normalization.en.graph_utils import GraphFst
+from nemo_text_processing.text_normalization.graph_utils import GraphFst
 from nemo_text_processing.text_normalization.en.verbalizers.cardinal import CardinalFst
 from nemo_text_processing.text_normalization.en.verbalizers.date import DateFst
 from nemo_text_processing.text_normalization.en.verbalizers.decimal import DecimalFst
