@@ -62,15 +62,15 @@ DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ch109_oracle_vad'
 CUDA_VISIBLE_DEVICES=0
 
 mkdir -p $DIARIZER_OUT_DIR
-if [ -d "$DIARIZER_OUT_DIR/pred_rttms" ]
-then
-    rm $DIARIZER_OUT_DIR/pred_rttms/*.rttm
-    rm $DIARIZER_OUT_DIR/pred_rttms/system_rttm_total
-fi
+#if [ -d "$DIARIZER_OUT_DIR/pred_rttms" ]
+#then
+    #rm $DIARIZER_OUT_DIR/pred_rttms/*.rttm
+    #rm $DIARIZER_OUT_DIR/pred_rttms/system_rttm_total
+#fi
 
 
-rm -f result
-touch result
+#rm -f result
+#touch result
 EXP_DIR="/disk2/Fei/"
 ORACLE_MODEL="/disk2/jagadeesh/vad_checkpoints/marblenet-I-4N-64bs-50e-FisherAMI_310ms.nemo"
 # reco2num="/disk2/datasets/NIST_SRE_2000_LDC2001S97/NIST_SRE_2000_LDC2001S97_16k/reco2num"
