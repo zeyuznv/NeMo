@@ -365,10 +365,10 @@ class FrameASR:
         self.n_frame_len = int(frame_len * self.sr)
         self.frame_overlap = frame_overlap
         self.n_frame_overlap = int(frame_overlap * self.sr)
-        timestep_duration = model_definition['AudioToMelSpectrogramPreprocessor']['window_stride']
+        self.timestep_duration = model_definition['AudioToMelSpectrogramPreprocessor']['window_stride']
         for block in model_definition['JasperEncoder']['jasper']:
-            timestep_duration *= block['stride'][0] ** block['repeat']
-        self.n_timesteps_overlap = int(frame_overlap / timestep_duration) - 2
+            self.timestep_duration *= block['stride'][0] ** block['repeat']
+        self.n_timesteps_overlap = int(frame_overlap / self.timestep_duration) - 2
         self.buffer = np.zeros(shape=2*self.n_frame_overlap + self.n_frame_len,
                                dtype=np.float32)
         self.offset = offset
@@ -398,6 +398,13 @@ class FrameASR:
         self.cum_spaces_list = []
         self.silence_logit_frame_threshold = 3
         self.spaces = []
+        # self.nonspeech_threshold = 20 #minimun width to consider non-speech activity 
+        self.nonspeech_threshold = 10 #minimun width to consider non-speech activity 
+        self.calibration_offset = -0.18
+        self.time_stride = self.timestep_duration
+        self.overlap_frames_count = int(self.n_frame_overlap/self.sr)
+
+
         # self.
         # ipdb.set_trace()
         self.reset()
@@ -421,33 +428,6 @@ class FrameASR:
 
         return self.cum_cluster_labels
 
-    def _get_silence_timestamps(self, probs):
-        spaces = []
-
-        state = ''
-        idx_state = 0
-        
-        frame_sec_stt, frame_sec_end = self._get_absolute_frame_time() 
-        print(f" start:{frame_sec_stt} end:{frame_sec_end}")
-
-        if np.argmax(probs[0]) == 0:
-            state = 'space'
-
-        for idx in range(1, probs.shape[0]):
-            current_char_idx = np.argmax(probs[idx])
-            if state == 'space' and current_char_idx != 0 and current_char_idx != 28:
-                spaces.append([idx_state, idx-1])
-                state = ''
-            if state == '':
-                if current_char_idx == 0:
-                    state = 'space'
-                    idx_state = idx
-
-        if state == 'space':
-            spaces.append([idx_state, len(probs)-1])
-            
-        # if len(probs) - 1 - idx_state > self.silence_logit_frame_threshold:
-        return spaces
 
     def _get_online_diar_segments(self):
         frame_list = [self.buffer[self.n_embed_seg_hop*i: self.n_embed_seg_len+self.n_embed_seg_hop*i] for i in range(self.n_embed_seg_count)]
@@ -459,7 +439,7 @@ class FrameASR:
     def _get_absolute_frame_time(self):
         frame_stt = self.frame_index - self.transcribe_delay
         frame_end = self.frame_index + 1 - self.transcribe_delay
-        return frame_stt, frame_end
+        return frame_stt, frame_end 
 
 
     def _online_diarization(self):
@@ -498,9 +478,72 @@ class FrameASR:
         return curr_speaker
     
     def _get_ASR_based_VAD_timestamps(self, logits):
-        spaces = self._get_silence_timestamps(logits)
+        spaces = self._get_silence_timestamps(logits, symbol_idx = 0,  state_symbol='space')
+        blanks = self._get_silence_timestamps(logits, symbol_idx = 28, state_symbol='blank')
+        non_speech = list(filter(lambda x:x[1] - x[0] > self.nonspeech_threshold, spaces))
+        # if not non_speech == []:
+        speech_labels = self._get_speech_labels(logits, non_speech)
+        # else:
+            # speech_labels = []
+        return speech_labels
+
+    def _get_silence_timestamps(self, probs, symbol_idx, state_symbol):
+        spaces = []
+        idx_state = 0
+        state = ''
+        
+        frame_sec_stt, frame_sec_end = self._get_absolute_frame_time() 
+        print(f" start:{frame_sec_stt} end:{frame_sec_end}")
+
+        # if np.argmax(probs[0]) == 0:
+        if np.argmax(probs[0]) == symbol_idx:
+            state = state_symbol
+
+        for idx in range(1, probs.shape[0]):
+            current_char_idx = np.argmax(probs[idx])
+            if state == state_symbol and current_char_idx != 0 and current_char_idx != symbol_idx:
+                spaces.append([idx_state, idx-1])
+                state = ''
+            if state == '':
+                if current_char_idx == symbol_idx:
+                    state = state_symbol
+                    idx_state = idx
+
+        if state == state_symbol:
+            spaces.append([idx_state, len(probs)-1])
+       
         return spaces
-        # self.cum_spaces_list = self.add_silence_list(spaces)
+   
+    def _get_speech_labels(self, probs, non_speech):
+        offset_sec = self.frame_index - self.transcribe_delay - self.overlap_frames_count
+        frame_offset =  float((offset_sec + self.calibration_offset)/self.time_stride)
+        speech_labels = []
+        
+        if non_speech == []: 
+            start = (0 + frame_offset)*self.time_stride
+            end = (len(probs) -1 + frame_offset)*self.time_stride
+            # speech_labels = ["{:.3f} {:.3f} speech".format(start,end)]
+            speech_labels = [(start, end)]
+
+        else:
+            start = frame_offset * self.time_stride
+            first_end = (non_speech[0][0]+frame_offset)*self.time_stride
+            # speech_labels = ["{:.3f} {:.3f} speech".format(start, first_end)]
+            speech_labels.append([(start, first_end)])
+            if len(non_speech) > 1:
+                for idx in range(len(non_speech)-1):
+                    start = (non_speech[idx][1] + frame_offset)*self.time_stride
+                    end = (non_speech[idx+1][0] + frame_offset)*self.time_stride
+                    # speech_labels.append("{:.3f} {:.3f} speech".format(start,end))
+                    speech_labels.append([(start, end)])
+            
+            last_start = (non_speech[-1][1] + frame_offset)*self.time_stride
+            last_end = (len(probs) -1 + frame_offset)*self.time_stride
+            # speech_labels.append("{:.3f} {:.3f} speech".format(last_start, last_end))
+            speech_labels.append([(last_start, last_end)])
+
+        return speech_labels
+
 
     def _decode(self, frame, offset=0):
         assert len(frame)==self.n_frame_len
@@ -509,21 +552,32 @@ class FrameASR:
        
         logits = infer_signal(asr_model, self.buffer).cpu().numpy()[0]
 
-        self.spaces = self._get_ASR_based_VAD_timestamps(logits)
-        curr_speaker = self._online_diarization()        
-        # ipdb.set_trace()
+        speech_labels = self._get_ASR_based_VAD_timestamps(logits)
+        self.segments = _get_diar_segments(speech_labels)
+        curr_speaker = self._online_diarization(self.segments)
+
         decoded = self._greedy_decoder(
             logits[self.n_timesteps_overlap:-self.n_timesteps_overlap], 
             self.vocab
         )
+        whole_buffer_text = self._greedy_decoder(
+            logits,
+            self.vocab
+        )
         # print(f"spaces: {spaces}")
         self.frame_index += 1
-        return decoded[:len(decoded)-offset], curr_speaker
+        return decoded[:len(decoded)-offset], curr_speaker, whole_buffer_text
+
+    # def _get_diar_segments(speech_labels):
+        # cont_stamps = get_contiguous_stamps(speech_labels)
+
+
+
 
     def _get_current_space():
         for interval in self.spaces:
             pass
-        return
+        return None
 
     
     @torch.no_grad()
@@ -532,10 +586,10 @@ class FrameASR:
             frame = np.zeros(shape=self.n_frame_len, dtype=np.float32)
         if len(frame) < self.n_frame_len:
             frame = np.pad(frame, [0, self.n_frame_len - len(frame)], 'constant')
-        unmerged, curr_speaker = self._decode(frame, self.offset)
+        unmerged, curr_speaker, whole_buffer_text = self._decode(frame, self.offset)
         if not merge:
             return unmerged
-        return self.greedy_merge(unmerged), curr_speaker, unmerged
+        return self.greedy_merge(unmerged), curr_speaker, unmerged, whole_buffer_text
     
     def reset(self):
         '''
@@ -597,10 +651,10 @@ if online_simulation:
         global empty_counter
         signal = sdata[CHUNK_SIZE*(buffer_counter-1):CHUNK_SIZE*(buffer_counter)]
         buffer_counter += 1
-        text, curr_speaker, unmerged = asr.transcribe(signal)
+        text, curr_speaker, unmerged, whole_buffer_text = asr.transcribe(signal)
         
-        str_stt = datetime.timedelta(seconds=asr.frame_stt)
-        str_end = datetime.timedelta(seconds=asr.frame_end)
+        str_stt = datetime.timedelta(seconds=asr.frame_stt + asr.calibration_offset) 
+        str_end = datetime.timedelta(seconds=asr.frame_end + asr.calibration_offset)
 
         if len(text) > 0 and text[-1] == " ":
             print("")
@@ -610,8 +664,9 @@ if online_simulation:
         if True:
             # print(text, end='')
             # print(f" [{str_m} speaker {curr_speaker}]", text)
-            print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", unmerged)
+            print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", whole_buffer_text)
             print(asr.spaces)
+            # print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", unmerged)
             # ipdb.set_trace()
             empty_counter = asr.offset
         elif empty_counter > 0:
@@ -668,7 +723,7 @@ else:
             buffer_counter += 1
             # signal = signal/np.max(signal)
             # print("signal:", buffer_counter, np.shape(signal), signal)
-            text, curr_speaker, unmerged = asr.transcribe(signal)
+            text, curr_speaker, unmerged, whole_buffer_text = asr.transcribe(signal)
             str_m = datetime.timedelta(seconds=(asr.frame_index+1-asr.transcribe_delay))
             # ipdb.set_trace()
             if len(text) > 0 and text[-1] == " ":
