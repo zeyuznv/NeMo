@@ -337,8 +337,11 @@ class ModelPT(LightningModule, Model):
             torch.save(self.state_dict(), model_weights)
             self._make_nemo_file_from_folder(filename=save_path, source_dir=tmpdir)
 
+    def _encrypted_default_save_to(self, save_path: str, passphrase: str = None):
+        pass
+
     @rank_zero_only
-    def save_to(self, save_path: str):
+    def save_to(self, save_path: str, encrypted: bool = False, passphrase: str = None):
         """
         Saves model instance (weights and configuration) into .nemo file
          You can use "restore_from" method to fully restore instance from .nemo file.
@@ -354,6 +357,14 @@ class ModelPT(LightningModule, Model):
         # Add NeMo rank check as well
         if not is_global_rank_zero():
             return
+        elif encrypted:
+            try:
+                import eff
+            except:
+                raise ImportError(
+                    'NeMo must be able to import eff in order to save encrypted models. Try installing eff: pip install nvidia-pyindex;pip install nvidia-eff'
+                )
+            self._encrypted_default_save_to(save_path, passphrase)
         else:
             self._default_save_to(save_path)
 
