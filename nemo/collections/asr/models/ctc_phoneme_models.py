@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import copy
+import json
 import os
+import tempfile
 from typing import Dict, List, Optional
 
 import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
+from tqdm.auto import tqdm
 
 from nemo.collections.asr.data import audio_to_text_dataset
 from nemo.collections.asr.losses.ctc import CTCLoss
@@ -127,6 +130,30 @@ class EncDecCTCModelPhoneme(EncDecCTCModel):
             pin_memory=config.get('pin_memory', False),
         )
 
+    def _setup_transcribe_dataloader(self, config: Dict) -> 'torch.utils.data.Dataloader':
+        """
+        Setup function for a temporary data loader that wraps the provided audio file.
+
+        Args:
+            config: A python dictionary which contains the following keys:
+                paths2audio_files (list): Paths to audio files (which should be relatively short fragments). \
+                    Recommended length per file is between 5 and 25 seconds.
+                batch_size (int): batch size to use during inference.
+                temp_dir (str): A temporary directory where the audio manifest is stored.
+
+        Returns:
+            A pytorch DataLoader for the given audio file(s).
+        """
+        dl_config = {
+            'manifest_filepath': os.path.join(config['temp_dir'], 'manifest.json'),
+            'sample_rate': self.preprocessor._sample_rate,
+            'batch_size': min(config['batch_size'], len(config['paths2audio_files'])),
+            'shuffle': False,
+        }
+
+        temporary_datalayer = self._setup_dataloader_from_config(config=DictConfig(dl_config))
+        return temporary_datalayer
+
     def change_vocabulary(self, new_phonemes_file: str):
         """
         Changes vocabulary of the tokenizer used during CTC decoding process.
@@ -183,3 +210,100 @@ class EncDecCTCModelPhoneme(EncDecCTCModel):
         OmegaConf.set_struct(self._cfg.decoder, True)
 
         logging.info(f"Changed tokenizer vocabulary to {self.decoder.vocabulary}.")
+
+    @torch.no_grad()
+    def transcribe(
+        self,
+        paths2audio_files: List[str],
+        batch_size: int = 4,
+        logprobs: bool = False,
+        return_hypotheses: bool = False,
+    ) -> List[str]:
+        """
+        Uses greedy decoding to transcribe audio files. Use this method for debugging and prototyping.
+        We have to override this function to replace the dummy text used with a phoneme instead of an English word.
+
+        Args:
+            paths2audio_files: (a list) of paths to audio files. \
+                Recommended length per file is between 5 and 25 seconds. \
+                But it is possible to pass a few hours long file if enough GPU memory is available.
+            batch_size: (int) batch size to use during inference.
+                Bigger will result in better throughput performance but would use more memory.
+            logprobs: (bool) pass True to get log probabilities instead of transcripts.
+            return_hypotheses: (bool) Either return hypotheses or text
+                With hypotheses can do some postprocessing like getting timestamp or rescoring
+
+        Returns:
+            A list of transcriptions (or raw log probabilities if logprobs is True) in the same order as paths2audio_files
+        """
+        if paths2audio_files is None or len(paths2audio_files) == 0:
+            return {}
+
+        if return_hypotheses and logprobs:
+            raise ValueError(
+                "Either `return_hypotheses` or `logprobs` can be True at any given time."
+                "Returned hypotheses will contain the logprobs."
+            )
+
+        # We will store transcriptions here
+        hypotheses = []
+        # Model's mode and device
+        mode = self.training
+        device = next(self.parameters()).device
+        dither_value = self.preprocessor.featurizer.dither
+        pad_to_value = self.preprocessor.featurizer.pad_to
+
+        try:
+            self.preprocessor.featurizer.dither = 0.0
+            self.preprocessor.featurizer.pad_to = 0
+            # Switch model to evaluation mode
+            self.eval()
+            # Freeze the encoder and decoder modules
+            self.encoder.freeze()
+            self.decoder.freeze()
+            logging_level = logging.get_verbosity()
+            logging.set_verbosity(logging.WARNING)
+            # Work in tmp directory - will store manifest file there
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with open(os.path.join(tmpdir, 'manifest.json'), 'w') as fp:
+                    for audio_file in paths2audio_files:
+                        entry = {'audio_filepath': audio_file, 'duration': 100000, 'text': 'T'}
+                        fp.write(json.dumps(entry) + '\n')
+
+                config = {'paths2audio_files': paths2audio_files, 'batch_size': batch_size, 'temp_dir': tmpdir}
+
+                temporary_datalayer = self._setup_transcribe_dataloader(config)
+                for test_batch in tqdm(temporary_datalayer, desc="Transcribing"):
+                    logits, logits_len, greedy_predictions = self.forward(
+                        input_signal=test_batch[0].to(device), input_signal_length=test_batch[1].to(device)
+                    )
+                    if logprobs:
+                        # dump log probs per file
+                        for idx in range(logits.shape[0]):
+                            lg = logits[idx][: logits_len[idx]]
+                            hypotheses.append(lg.cpu().numpy())
+                    else:
+                        current_hypotheses = self._wer.ctc_decoder_predictions_tensor(
+                            greedy_predictions, predictions_len=logits_len, return_hypotheses=return_hypotheses,
+                        )
+
+                        if return_hypotheses:
+                            # dump log probs per file
+                            for idx in range(logits.shape[0]):
+                                current_hypotheses[idx].y_sequence = logits[idx][: logits_len[idx]]
+
+                        hypotheses += current_hypotheses
+
+                    del greedy_predictions
+                    del logits
+                    del test_batch
+        finally:
+            # set mode back to its original value
+            self.train(mode=mode)
+            self.preprocessor.featurizer.dither = dither_value
+            self.preprocessor.featurizer.pad_to = pad_to_value
+            if mode is True:
+                self.encoder.unfreeze()
+                self.decoder.unfreeze()
+            logging.set_verbosity(logging_level)
+        return hypotheses
