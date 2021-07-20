@@ -21,7 +21,7 @@ from pytorch_lightning import seed_everything
 from nemo.collections.asr.models.classification_models import EncDecClassificationModel
 from nemo.collections.asr.models.label_models import ExtractSpeakerEmbeddingsModel
 from nemo.collections.asr.parts.mixins.mixins import DiarizationMixin
-from nemo.collections.asr.data.audio_to_label import get_segments_from_slices
+# from nemo.collections.asr.data.audio_to_label import get_segments_from_slices
 from nemo.collections.asr.parts.utils.speaker_utils import audio_rttm_map, perform_diarization, write_rttm2manifest, get_DER
 from nemo.collections.asr.parts.utils.speaker_utils import get_contiguous_stamps, merge_stamps, labels_to_pyannote_object, rttm_to_labels, labels_to_rttmfile
 from nemo.collections.asr.parts.utils.vad_utils import (
@@ -45,7 +45,7 @@ from nemo.core.neural_types import NeuralType, AudioSignal, LengthsType
 from nemo.utils import logging, model_utils
 import torch
 from torch.utils.data import DataLoader
-
+import math
 seed_everything(42)
 
 # global cfg_pointer
@@ -102,6 +102,32 @@ cfg_diar = hydra.compose(config_name="speaker_diarization.yaml", overrides=overr
 # main()
 
 ### >>>>
+def get_segments_from_slices(slices, sig, slice_length, shift, audio_signal, audio_lengths):
+    """create short speech segments from sclices
+    Args:
+        slices (int): the number of slices to be created
+        slice_length (int): the lenghth of each slice
+        shift (int): the amount of slice window shift
+        sig (FloatTensor): the tensor that contains input signal
+
+    Returns:
+        audio_signal (list): list of sliced input signal
+    """
+    # fix_siglen = True
+    fix_siglen = False
+    for slice_id in range(slices):
+        start_idx = slice_id * shift
+        end_idx = start_idx + slice_length
+        signal = sig[start_idx:end_idx]
+        if len(signal) < slice_length:
+            signal = repeat_signal(signal, len(signal), slice_length)
+        audio_signal.append(signal)
+        
+        if fix_siglen:
+            audio_lengths.append(len(signal))
+        else:
+            audio_lengths.append(slice_length)
+    return audio_signal, audio_lengths
 
 
 class OnlineClusteringDiarizer(ClusteringDiarizer):
@@ -381,8 +407,8 @@ class FrameASR:
         self.frame_end = None
         self.n_initial_buff_len = self.buffer.shape[0] - self.n_frame_len
         self.transcribe_delay = int(self.n_frame_overlap / self.sr) + 1
-        self.embed_seg_len = 2
-        self.embed_seg_hop = 0.5
+        self.embed_seg_len = 1.5
+        self.embed_seg_hop = 0.75
         self.n_embed_seg_len = int(self.sr * self.embed_seg_len)
         self.n_embed_seg_hop = int(self.sr * self.embed_seg_hop)
         self.n_embed_seg_count = 1 + int((len(self.buffer) - self.n_embed_seg_len)/self.n_embed_seg_hop)
@@ -403,6 +429,7 @@ class FrameASR:
         self.calibration_offset = -0.18
         self.time_stride = self.timestep_duration
         self.overlap_frames_count = int(self.n_frame_overlap/self.sr)
+        self.segment_list = []
 
 
         # self.
@@ -493,7 +520,7 @@ class FrameASR:
         state = ''
         
         frame_sec_stt, frame_sec_end = self._get_absolute_frame_time() 
-        print(f" start:{frame_sec_stt} end:{frame_sec_end}")
+        # print(f" start:{frame_sec_stt} end:{frame_sec_end}")
 
         # if np.argmax(probs[0]) == 0:
         if np.argmax(probs[0]) == symbol_idx:
@@ -551,11 +578,16 @@ class FrameASR:
         self.buffer[-self.n_frame_len:] = frame
        
         logits = infer_signal(asr_model, self.buffer).cpu().numpy()[0]
-
         speech_labels = self._get_ASR_based_VAD_timestamps(logits)
-        self.segments = _get_diar_segments(speech_labels)
-        curr_speaker = self._online_diarization(self.segments)
+        # ipdb.set_trace()
+        # print(speech_labels)
+        self.frame_stt, self.frame_end = self._get_absolute_frame_time() 
+        buffer_start = self.frame_stt + self.calibration_offset - float(self.overlap_frames_count)
+        # print(self.frame_stt - float(self.overlap_frames_count) )
 
+        self._get_diar_segments(buffer_start, speech_labels)
+        # curr_speaker = self._online_diarization(self.segments)
+        curr_speaker = 1
         decoded = self._greedy_decoder(
             logits[self.n_timesteps_overlap:-self.n_timesteps_overlap], 
             self.vocab
@@ -568,9 +600,30 @@ class FrameASR:
         self.frame_index += 1
         return decoded[:len(decoded)-offset], curr_speaker, whole_buffer_text
 
-    # def _get_diar_segments(speech_labels):
-        # cont_stamps = get_contiguous_stamps(speech_labels)
+    def _get_diar_segments(buffer_start, speech_labels):
+        if buffer_start > 0:
+            # cont_stamps = get_segments_from_slices(speech_labels)
+            if self.segment_list == []:
+                active_speech_segs = speech_labels  
+            else:
+                active_speech_segs = _get_new_speech_labels(speech_labels)
 
+        return 
+
+    def _get_segments_from_buffer(self, buffer_start, active_speech_segs):
+        for idx, range_t in enumerate(active_speech_segs):
+            sigs, sig_lens = [], []
+            stt_b = range_t[0] - buffer_start
+            end_b = range_t[1] - buffer_start
+            dur = float(end_b - stt_b) 
+            base = math.ceil((dur - self.embed_seg_len) / self.embed_seg_hop)
+            slices = 1 if base < 0 else base + 1
+            sigs, sig_lens= get_segments_from_slices(slices, 
+                                                     self.buffer[stt_b:end_b],
+                                                     self.embed_seg_len,
+                                                     self.embed_seg_hop,
+                                                     sigs, 
+                                                     sig_lens)
 
 
 
@@ -653,8 +706,8 @@ if online_simulation:
         buffer_counter += 1
         text, curr_speaker, unmerged, whole_buffer_text = asr.transcribe(signal)
         
-        str_stt = datetime.timedelta(seconds=asr.frame_stt + asr.calibration_offset) 
-        str_end = datetime.timedelta(seconds=asr.frame_end + asr.calibration_offset)
+        str_stt_buff = datetime.timedelta(seconds=asr.frame_stt + asr.calibration_offset - float(asr.overlap_frames_count))
+        str_end_buff = datetime.timedelta(seconds=asr.frame_end + asr.calibration_offset+ float(asr.overlap_frames_count))
 
         if len(text) > 0 and text[-1] == " ":
             print("")
@@ -664,7 +717,8 @@ if online_simulation:
         if True:
             # print(text, end='')
             # print(f" [{str_m} speaker {curr_speaker}]", text)
-            print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", whole_buffer_text)
+            # print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", whole_buffer_text)
+            print(f" [{uniq_key}|{str_stt_buff}~{str_end_buff} speaker {curr_speaker}]", whole_buffer_text)
             print(asr.spaces)
             # print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", unmerged)
             # ipdb.set_trace()

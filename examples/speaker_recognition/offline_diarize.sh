@@ -13,14 +13,17 @@ BASE_PATH=/home/taejinp/projects/NeMo/examples/speaker_recognition
 #GT_RTTM_DIR="/disk2/datasets/amicorpus_lapel/lapel_files/amicorpus_test_rttm.scp"
 SEG_LENGTH=3
 SEG_SHIFT=1.5
-SPK_EMBED_MODEL="speakerverification_speakernet"
+#SEG_LENGTH=1.5
+#SEG_SHIFT=0.75
+#####SPK_EMBED_MODEL="speakerverification_speakernet"
+SPK_EMBED_MODEL="/home/taejinp/gdrive/model/ecapa_tdnn/ecapa_tdnn.nemo"
 #DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/small_ami_oracle_vad'
 DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ami_oracle_vad'
 #DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ami_system_vad'
 #VAD_MODEL='vad_telephony_marblenet'
 #VAD_THRES=0.7
 reco2num=null
-##reco2num='/home/taejinp/nemo_buffer/small_ami_oracle_vad/reco2num_test.txt'
+#reco2num='/home/taejinp/nemo_buffer/small_ami_oracle_vad/reco2num_test.txt'
 ##reco2num=4
 ### >>>>>>>>>> AMI END
 
