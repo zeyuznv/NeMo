@@ -9,9 +9,9 @@ from bs4 import BeautifulSoup
 
 
 TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
-DOC_COMPILED_PATTERN = re.compile(r'<doc docid="([1][0-9]*)"[^>]*>')
-REMOVE_NOT_ALPHABETICAL_PATTERN = re.compile(r'[^a-z ]')
+NOT_TRANSCRIPT_PATTERN = re.compile(r"[^a-z ']")
 SPACE_DEDUP = re.compile(r' +')
+SOUNDS_DESCR = re.compile(r'^\([^)]+\)$')
 
 
 def get_args():
@@ -62,10 +62,11 @@ def get_talk_id_to_text(src_text):
     result = {
         doc["docid"]:
             SPACE_DEDUP.sub(
-                ' ', REMOVE_NOT_ALPHABETICAL_PATTERN.sub(
+                ' ', NOT_TRANSCRIPT_PATTERN.sub(
                     ' ',
                     ' '.join(
-                        [elem.text for elem in doc.findAll("seg")]
+                        [elem.text for elem in doc.findAll("seg")
+                         if not SOUNDS_DESCR.match(elem.text)]
                     ).lower()
                 )
             )
