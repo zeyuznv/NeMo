@@ -8,9 +8,10 @@ import wave
 from bs4 import BeautifulSoup
 
 
-TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav)$")
+TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
 DOC_COMPILED_PATTERN = re.compile(r'<doc docid="([1][0-9]*)"[^>]*>')
 REMOVE_NOT_ALPHABETICAL_PATTERN = re.compile(r'[^a-z ]')
+SPACE_DEDUP = re.compile(r' +')
 
 
 def get_args():
@@ -37,12 +38,10 @@ def get_args():
     args.audio_dir = args.audio_dir.expanduser()
     if not args.audio_dir.is_dir():
         raise ValueError("`audio_dir` parameter has to be a path to directory.")
-    args.src_text = args.src_text.expnaduser()
+    args.src_text = args.src_text.expanduser()
     if not args.src_text.is_file():
         raise ValueError("`src_text` parameter has to be a path to a file.")
-    args.src_text = args.output.expnaduser()
-    if not args.output.is_file():
-        raise ValueError("`output` parameter has to be a path to a file.")
+    args.output = args.output.expanduser()
     return args
 
 
@@ -62,13 +61,21 @@ def get_talk_id_to_text(src_text):
     docs = soup.findAll("doc")
     result = {
         doc["docid"]:
-            REMOVE_NOT_ALPHABETICAL_PATTERN.sub('', ' '.join([elem.text for elem in doc.findAll("seg")]).lower())
-        for doc in docs}
+            SPACE_DEDUP.sub(
+                ' ', REMOVE_NOT_ALPHABETICAL_PATTERN.sub(
+                    ' ',
+                    ' '.join(
+                        [elem.text for elem in doc.findAll("seg")]
+                    ).lower()
+                )
+            )
+        for doc in docs
+    }
     return result
 
 
 def get_wav_duration(filepath):
-    with contextlib.closing(wave.open(filepath, 'r')) as f:
+    with contextlib.closing(wave.open(str(filepath), 'r')) as f:
         frames = f.getnframes()
         rate = f.getframerate()
     return frames / float(rate)
@@ -90,7 +97,7 @@ def main():
             manifest += '\n'
         filepath = talk_id_to_wav_file[talk_id]
         manifest += json.dumps({"audio_filepath": str(filepath), "duration": get_wav_duration(filepath), "text": text})
-    with args.output.open() as f:
+    with args.output.open('w') as f:
         f.write(manifest)
 
 
