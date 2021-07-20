@@ -6,22 +6,23 @@ ami_finetune_lr_0.001_ep_20.nemo
 BASE_PATH=/home/taejinp/projects/NeMo/examples/speaker_recognition
 
 ###reco2num='/disk2/datasets/amicorpus_lapel/lapel_files/reco2num_test.txt'
+#SPK_EMBED_MODEL="speakerverification_speakernet"
 
 ### >>>>>>>>>> AMI START
-#AUDIO_SCP="/disk2/datasets/amicorpus_lapel/lapel_files/amicorpus_test_wav.scp"
-#ORACLE_VAD="/disk2/datasets/amicorpus_lapel/lapel_files/oracle_amicorpus_lapel_test_manifest.json"
-#GT_RTTM_DIR="/disk2/datasets/amicorpus_lapel/lapel_files/amicorpus_test_rttm.scp"
-#SEG_LENGTH=3
-#SEG_SHIFT=1.5
-#SPK_EMBED_MODEL="speakerverification_speakernet"
-#DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/small_ami_oracle_vad'
-#DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ami_oracle_vad'
-#DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ami_system_vad'
-#VAD_MODEL='vad_telephony_marblenet'
-#VAD_THRES=0.7
+AUDIO_SCP="/disk2/datasets/amicorpus_lapel/lapel_files/amicorpus_test_wav.scp"
+ORACLE_VAD="/disk2/datasets/amicorpus_lapel/lapel_files/oracle_amicorpus_lapel_test_manifest.json"
+GT_RTTM_DIR="/disk2/datasets/amicorpus_lapel/lapel_files/amicorpus_test_rttm.scp"
+SEG_LENGTH=3
+SEG_SHIFT=1.5
+SPK_EMBED_MODEL="/home/taejinp/gdrive/model/ecapa_tdnn/ecapa_tdnn.nemo"
+DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/small_ami_oracle_vad'
+DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ami_oracle_vad'
+DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ami_system_vad'
+VAD_MODEL='vad_telephony_marblenet'
+VAD_THRES=0.7
 reco2num=null
-##reco2num='/home/taejinp/nemo_buffer/small_ami_oracle_vad/reco2num_test.txt'
-##reco2num=4
+#reco2num='/home/taejinp/nemo_buffer/small_ami_oracle_vad/reco2num_test.txt'
+#reco2num=4
 ### >>>>>>>>>> AMI END
 
 
@@ -36,14 +37,15 @@ reco2num=null
 #AUDIO_SCP="/disk2/scps/audio_scps/all_callhome.scp"
 
 ### >>>>>>>>>> Callhome AES START
-GT_RTTM_DIR="/disk2/scps/rttm_scps/callhome_ch109.rttm"
-AUDIO_SCP="/disk2/scps/audio_scps/callhome_ch109.scp"
-ORACLE_VAD="/disk2/scps/oracle_vad/modified_oracle_callhome_ch109.json"
-reco2num='/disk2/datasets/modified_callhome/RTTMS/reco2num.txt'
-SEG_LENGTH=1.5
-SEG_SHIFT=0.75
-SPK_EMBED_MODEL="speakerdiarization_speakernet"
-DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ch109_oracle_vad'
+#GT_RTTM_DIR="/disk2/scps/rttm_scps/callhome_ch109.rttm"
+#AUDIO_SCP="/disk2/scps/audio_scps/callhome_ch109.scp"
+#ORACLE_VAD="/disk2/scps/oracle_vad/modified_oracle_callhome_ch109.json"
+#reco2num='/disk2/datasets/modified_callhome/RTTMS/reco2num.txt'
+#SEG_LENGTH=1.5
+#SEG_SHIFT=0.75
+##SPK_EMBED_MODEL="speakerdiarization_speakernet"
+#SPK_EMBED_MODEL="/home/taejinp/gdrive/model/ecapa_tdnn/ecapa_tdnn.nemo"
+#DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ch109_oracle_vad'
 #DIARIZER_OUT_DIR='/home/taejinp/nemo_buffer/ch109_system_vad'
 ##VAD_MODEL='vad_telephony_marblenet'
 ##VAD_THRES=0.7
