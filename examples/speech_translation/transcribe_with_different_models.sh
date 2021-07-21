@@ -29,7 +29,8 @@ models_working_on_split_data=(
 echo "Creating output directory ${output_dir}"
 mkdir -p "${output_dir}"
 
-
+split_data_path="${audio_dir}/../split"
+split_transcripts="${audio_dir}/../split_transcripts"
 for model_checkpoint in "${models_working_on_split_data[@]}"; do
   for f in "${split_data_path}"/*; do
     talk_id=$(basename "${f}")
@@ -52,8 +53,9 @@ for model_checkpoint in "${models_working_on_not_split_data[@]}"; do
     batch_size=1
 done
 
-split_data_path="${audio_dir}/../split"
-split_transcripts="${audio_dir}/../split_transcripts"
+
+#split_data_path="${audio_dir}/../split"
+#split_transcripts="${audio_dir}/../split_transcripts"
 #for f in "${split_data_path}"/*; do
 #  talk_id=$(basename "${f}")
 #  if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
