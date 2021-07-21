@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-gpu_models=(
+models_working_on_not_split_data=(
   QuartzNet15x5Base-En
   stt_en_jasper10x5dr
   stt_en_citrinet_256
@@ -17,7 +17,7 @@ gpu_models=(
 #  stt_en_conformer_ctc_large_ls
 #)
 
-cpu_models=(
+models_working_on_split_data=(
   stt_en_conformer_ctc_small
   stt_en_conformer_ctc_medium
   stt_en_conformer_ctc_large
@@ -28,17 +28,40 @@ cpu_models=(
 
 echo "Creating output directory ${output_dir}"
 mkdir -p "${output_dir}"
-for model_checkpoint in "${gpu_models[@]}"; do
+for model_checkpoint in "${models_working_on_not_split_data[@]}"; do
   python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
     audio_dir="${audio_dir}" \
     output_filename="${output_dir}/${model_checkpoint}.manifest" \
     cuda=true \
     batch_size=1
 done
-for model_checkpoint in "${cpu_models[@]}"; do
-  python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
-    audio_dir="${audio_dir}" \
-    output_filename="${output_dir}/${model_checkpoint}.manifest" \
-    cuda=false \
-    batch_size=1
+
+split_data_path="${audio_dir}/../split"
+split_transcripts="${audio_dir}/../split_transcripts"
+#for f in "${split_data_path}"/*; do
+#  talk_id=$(basename "${f}")
+#  if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
+#    mkdir -p "${split_transcripts}/${talk_id}"
+#    for model_checkpoint in "${models_working_on_split_data[@]}"; do
+#      python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
+#        audio_dir="${f}" \
+#        output_filename="${split_transcripts}/${talk_id}/${model_checkpoint}.manifest" \
+#        cuda=true \
+#        batch_size=4
+#    done
+#  fi
+#done
+
+for model_checkpoint in "${models_working_on_split_data[@]}"; do
+  for f in "${split_data_path}"/*; do
+    talk_id=$(basename "${f}")
+    if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
+      mkdir -p "${split_transcripts}/${talk_id}"
+      python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
+        audio_dir="${f}" \
+        output_filename="${split_transcripts}/${talk_id}/${model_checkpoint}.manifest" \
+        cuda=true \
+        batch_size=4
+    fi
+  done
 done
