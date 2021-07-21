@@ -13,5 +13,5 @@ work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de
 for m in "${good_transcript_models[@]}"; do
   python punc_cap.py -a "${work_dir}/manifest.json" \
     -p "${work_dir}/transcripts/${m}.manifest" \
-    -o "${work_dir}/punc_transripts/${m}.txt"
+    -o "${work_dir}/punc_transcripts/${m}.txt"
 done
