@@ -44,7 +44,7 @@ def split_into_segments(text, max_num_chars_in_segment):
 def main():
     args = get_args()
     pretrained = args.model_path if args.model is None else args.model
-    model = MTEncDecModel.from_pretrained(pretrained)
+    model = MTEncDecModel.restore_from(pretrained)
     with open(args.input) as f:
         texts = f.readlines()
     processed = []
