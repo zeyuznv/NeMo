@@ -20,5 +20,7 @@ mkdir -p output_dir
 for model_checkpoint in "${models[@]}"; do
   python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
     audio_dir="${audio_dir}" \
-    output_filename="${output_dir}/${model_checkpoint}.manifest"
+    output_filename="${output_dir}/${model_checkpoint}.manifest" \
+    cuda=true \
+    batch_size=1
 done
