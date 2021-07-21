@@ -16,8 +16,9 @@ models=(
   stt_en_conformer_ctc_large_ls
 )
 
+mkdir -p output_dir
 for model_checkpoint in "${models[@]}"; do
-  python transcribe_speech.py pretrained_name="${model_checkpoint}" \
+  python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
     audio_dir="${audio_dir}" \
     output_filename="${output_dir}/${model_checkpoint}"
 done
