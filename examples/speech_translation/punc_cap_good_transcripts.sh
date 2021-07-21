@@ -8,7 +8,7 @@ good_transcript_models=(
   stt_en_jasper10x5dr
 )
 
-work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de
+work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 
 for m in "${good_transcript_models[@]}"; do
   python punc_cap.py -a "${work_dir}/manifest.json" \
