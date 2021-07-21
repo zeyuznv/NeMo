@@ -38,7 +38,7 @@ for model_checkpoint in "${models_working_on_split_data[@]}"; do
       mkdir -p "${split_transcripts}/${talk_id}"
       python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
         audio_dir="${f}" \
-        output_filename="${split_transcripts}/${talk_id}/${model_checkpoint}.manifest" \
+        output_filename="${split_transcripts}/${model_checkpoint}/${talk_id}.manifest" \
         cuda=true \
         batch_size=4
     fi

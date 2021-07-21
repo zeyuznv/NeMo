@@ -50,8 +50,7 @@ def load_markup(segmentation_file):
 
 
 def split_file(talk_id, file_markup, file_path, output_dir):
-    split_dir = output_dir / Path(talk_id)
-    seg_wavs = split_dir / Path("wavs")
+    seg_wavs = output_dir / Path(talk_id)
     seg_wavs.mkdir(exist_ok=True, parents=True)
     audio = AudioSegment.from_wav(file_path)
     for i, seg_time in enumerate(file_markup):
