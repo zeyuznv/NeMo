@@ -32,6 +32,7 @@ def align_texts(hyps, refs, hyp_file, ref_file):
             raise ValueError(
                 f"Talk with id {k} is not found in references. Hypothesis file: {hyp_file}. Reference file: {ref_file}")
         aligned_r.append(refs[k])
+    return aligned_h, aligned_r
 
 
 def main():
