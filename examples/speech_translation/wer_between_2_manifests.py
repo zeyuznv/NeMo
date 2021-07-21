@@ -15,21 +15,23 @@ def get_args():
     return args
 
 
-def read_texts_from_manifest(filepath):
+def read_texts_from_manifest(filepath, text_key):
     result = {}
     with filepath.open() as f:
         for line in f:
             data = json.loads(line)
-            result[str(Path(data["audio_filepath"]).parts[-1])] = data["text"]
+            result[Path(data["audio_filepath"]).parts[-1]] = data[text_key]
     return result
 
 
 def main():
     args = get_args()
-    hyps = read_texts_from_manifest(args.hyp)
-    refs = read_texts_from_manifest(args.ref)
-
-
+    hyps = read_texts_from_manifest(args.hyp, "pred_text")
+    refs = read_texts_from_manifest(args.ref, "text")
+    if len(hyps) != len(refs):
+        raise ValueError(f"Number of hypothesis texts {len(hyps)} in file {args.hyp} is not equal to number of "
+                         f"reference texts {len(refs)} in file {args.ref}")
+    print(word_error_rate(hyps, refs))
 
 
 if __name__ == "__main__":
