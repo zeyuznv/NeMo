@@ -7,6 +7,7 @@ from nemo.collections.nlp.models import PunctuationCapitalizationModel
 
 
 TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
+SPACE_DEDUP = re.compile(r' +')
 
 
 def get_args():
@@ -45,13 +46,25 @@ def load_manifest_text(manifest, text_key):
     return result
 
 
+def split_into_segments(text, size):
+    segments = []
+    for i in range(0, len(text), size):
+        segments.append(text[i:i + size])
+    return segments
+
+
 def main():
     args = get_args()
     model = PunctuationCapitalizationModel.from_pretrained("punctuation_en_bert")
     order = get_talk_id_order(args.manifest_to_align_with)
     texts_to_process = load_manifest_text(args.manifest_pred, "pred_text")
     texts = [texts_to_process[talk_id] for talk_id in order]
-    processed = model.add_punctuation_capitalization(texts, batch_size=1, max_seq_length=10000)
+    max_seq_len = 512
+    processed = []
+    for text in texts:
+        segments = split_into_segments(text, max_seq_len)
+        processed_segments = model.add_punctuation_capitalization(segments, max_seq_length=max_seq_len)
+        processed.append(SPACE_DEDUP.sub(' ', ' '.join(processed_segments)))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('w') as f:
         for t in processed:
