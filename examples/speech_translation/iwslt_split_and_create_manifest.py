@@ -63,10 +63,10 @@ def get_talk_id_to_texts(src_text):
     docs = soup.findAll("doc")
     result = {
         doc["docid"]:
-            [
-                SPACE_DEDUP.sub(' ', NOT_TRANSCRIPT_PATTERN.sub(' ', elem.text.lower()))
-                for elem in doc.findAll("seg") if not SOUNDS_DESCR.match(elem.text)
-            ]
+            {
+                i: SPACE_DEDUP.sub(' ', NOT_TRANSCRIPT_PATTERN.sub(' ', elem.text.lower()))
+                for i, elem in enumerate(doc.findAll("seg")) if not SOUNDS_DESCR.match(elem.text)
+            }
         for doc in docs
     }
     return result
@@ -75,14 +75,16 @@ def get_talk_id_to_texts(src_text):
 def split_file(talk_id, file_markup, file_path, file_texts, output_dir):
     split_dir = output_dir / Path(talk_id)
     seg_wavs = split_dir / Path("wavs")
+    seg_wavs.mkdir(exist_ok=True, parents=True)
     seg_manifest_path = split_dir / Path("manifest")
     audio = AudioSegment.from_wav(file_path)
     manifest = ""
-    if len(file_markup) != len(file_texts):
-        raise ValueError(f"Number of audio segments and number of texts are not equal for talk {talk_id}")
-    for i, (seg_time, text) in enumerate(zip(file_markup, file_texts)):
+    if len(file_markup) < len(file_texts):
+        raise ValueError(f"Number of audio segments {len(file_markup)} is less than number of texts {len(file_texts)} for talk {talk_id}.")
+    for seg_i, text in file_texts.items():
+        seg_time = file_markup[seg_i]
         audio_seg = audio[seg_time[0] * NUMBER_OF_MS_IN_1_SEC:(seg_time[0] + seg_time[1]) * NUMBER_OF_MS_IN_1_SEC]
-        save_path = seg_wavs / Path(str(i) + '.wav')
+        save_path = seg_wavs / Path(str(seg_i) + '.wav')
         if manifest:
             manifest += '\n'
         manifest += json.dumps({"audio_filepath": str(save_path), "duration": audio_seg.duration_seconds, "text": text})
@@ -95,8 +97,8 @@ def main():
     args = get_args()
     markup = load_markup(args.segmentation_file)
     wav_paths = get_wav_files(args.audio_dir)
-    texts = get_talk_id_to_texts(args.src_texts)
-    args.output_dir.makedirs(exist_ok=True, parents=True)
+    texts = get_talk_id_to_texts(args.src_text)
+    args.output_dir.mkdir(exist_ok=True, parents=True)
     for talk_id, file_markup in markup.items():
         split_file(talk_id, file_markup, wav_paths[talk_id], texts[talk_id], args.output_dir)
 
