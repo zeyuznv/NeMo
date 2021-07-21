@@ -48,7 +48,7 @@ def main():
     with open(args.input) as f:
         texts = f.readlines()
     processed = []
-    max_num_chars_in_segment = 1024
+    max_num_chars_in_segment = 512
     for text in texts:
         segments = split_into_segments(text, max_num_chars_in_segment)
         processed_segments = model.translate(segments, source_lang="en", target_lang="de")
