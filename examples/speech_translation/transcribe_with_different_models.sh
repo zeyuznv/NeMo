@@ -43,6 +43,7 @@ for model_checkpoint in "${models_working_on_split_data[@]}"; do
         batch_size=4
     fi
   done
+  python join_split_wav_manifests.py -s "${split_transcripts}/${model_checkpoint}" -o "${output_dir}" -n "${audio_dir}"
 done
 
 for model_checkpoint in "${models_working_on_not_split_data[@]}"; do
