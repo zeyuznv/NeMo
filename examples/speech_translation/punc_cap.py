@@ -25,7 +25,7 @@ def get_talk_id_order(manifest):
     talk_ids = []
     with manifest.open() as f:
         for i, line in enumerate(f):
-            data = json.loads(f)
+            data = json.loads(line)
             m = TALK_ID_COMPILED_PATTERN.search(data["audio_filepath"])
             if m is None:
                 raise ValueError(f"Talk id is not identified in file {manifest} for line {i}")
@@ -37,7 +37,7 @@ def load_manifest_text(manifest, text_key):
     result = {}
     with manifest.open() as f:
         for i, line in enumerate(f):
-            data = json.loads(f)
+            data = json.loads(line)
             m = TALK_ID_COMPILED_PATTERN.search(data["audio_filepath"])
             if m is None:
                 raise ValueError(f"Talk id is not identified in file {manifest} for line {i}")
