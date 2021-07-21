@@ -22,13 +22,19 @@ def get_args():
 
 def get_joined_text_and_duration(file_name):
     joined_text = ""
-    joined_duration = 0.0
+    joined_duration = None
+    text_key = None
     with file_name.open() as f:
         for line in f:
             data = json.loads(line)
-            joined_text += ' ' + data["text"]
-            joined_duration += data["duration"]
-    return SPACE_DEDUP.sub(' ', joined_text), joined_duration
+            if text_key is None:
+                text_key = "text" if "text" in data else "pred_text"
+            if joined_duration is None and "duration" in data:
+                joined_duration = 0.0
+            joined_text += ' ' + data[text_key]
+            if joined_duration is not None:
+                joined_duration += data["duration"]
+    return SPACE_DEDUP.sub(' ', joined_text), joined_duration, text_key
 
 
 def get_corresponding_not_split_wav_file(file_manifest, not_split_wav_dir):
@@ -50,14 +56,16 @@ def join_manifests(dir_, output_dir, not_split_wav_dir):
     last_name = dir_.parts[-1]
     joined_name = output_dir / Path(last_name + '.manifest')
     manifest = ""
-    for elem in dir_.iterdirs():
+    for elem in dir_.iterdir():
         if elem.is_file() and elem.suffix == ".manifest":
-            joined_text, joined_duration = get_joined_text_and_duration(elem)
+            joined_text, joined_duration, text_key = get_joined_text_and_duration(elem)
             not_split_wav_file = get_corresponding_not_split_wav_file(elem, not_split_wav_dir)
             if manifest:
                 manifest += '\n'
-            manifest += json.dumps(
-                {"audio_filepath": str(not_split_wav_file), "duration": joined_duration, "text": joined_text})
+            m_s = {"audio_filepath": str(not_split_wav_file),  text_key: joined_text}
+            if joined_duration is not None:
+                m_s["duration"] = joined_duration
+            manifest += json.dumps(m_s)
     with joined_name.open('w') as f:
         f.write(manifest)
 
