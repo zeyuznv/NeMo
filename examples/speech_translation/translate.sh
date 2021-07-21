@@ -12,6 +12,6 @@ work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 
 for m in "${good_transcript_models[@]}"; do
   python translate_iwslt.py -p "~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo" \
-    -i "${work_dir}/punc_transcripts/${m}.manifest" \
+    -i "${work_dir}/punc_transcripts/${m}.txt" \
     -o "${work_dir}/translated_transcripts/${m}.txt"
 done
