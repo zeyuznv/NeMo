@@ -24,6 +24,16 @@ def read_texts_from_manifest(filepath, text_key):
     return result
 
 
+def align_texts(hyps, refs, hyp_file, ref_file):
+    aligned_h, aligned_r = [], []
+    for k, v in hyps.items():
+        aligned_h.append(v)
+        if k not in refs:
+            raise ValueError(
+                f"Talk with id {k} is not found in references. Hypothesis file: {hyp_file}. Reference file: {ref_file}")
+        aligned_r.append(refs[k])
+
+
 def main():
     args = get_args()
     hyps = read_texts_from_manifest(args.hyp, "pred_text")
@@ -31,6 +41,7 @@ def main():
     if len(hyps) != len(refs):
         raise ValueError(f"Number of hypothesis texts {len(hyps)} in file {args.hyp} is not equal to number of "
                          f"reference texts {len(refs)} in file {args.ref}")
+    hyps, refs = align_texts(hyps, refs, args.hyp, args.ref)
     print(word_error_rate(hyps, refs))
 
 
