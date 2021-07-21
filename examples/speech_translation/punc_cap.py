@@ -51,8 +51,8 @@ def main():
     order = get_talk_id_order(args.manifest_to_align_with)
     texts_to_process = load_manifest_text(args.manifest_pred, "pred_text")
     texts = [texts_to_process[talk_id] for talk_id in order]
-    processed = model.add_punctuation_capitalization(texts)
-    args.output.mkdir(parents=True, exist_ok=True)
+    processed = model.add_punctuation_capitalization(texts, batch_size=1, max_seq_length=10000)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('w') as f:
         for t in processed:
             f.write(t + '\n')
