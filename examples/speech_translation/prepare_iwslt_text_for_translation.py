@@ -36,13 +36,9 @@ def get_talk_id_to_text(src_text):
     result = {
         doc["docid"]:
             SPACE_DEDUP.sub(
-                ' ', NOT_TRANSCRIPT_PATTERN.sub(
-                    ' ',
-                    ' '.join(
-                        [elem.text for elem in doc.findAll("seg")
-                         if not SOUNDS_DESCR.match(elem.text)]
-                    ).lower()
-                )
+                ' ', ' '.join(
+                    [elem.text for elem in doc.findAll("seg")
+                     if not SOUNDS_DESCR.match(elem.text)])
             )
         for doc in docs
     }
