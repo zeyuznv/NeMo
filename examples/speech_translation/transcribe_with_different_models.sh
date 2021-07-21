@@ -32,10 +32,10 @@ mkdir -p "${output_dir}"
 split_data_path="${audio_dir}/../split"
 split_transcripts="${audio_dir}/../split_transcripts"
 for model_checkpoint in "${models_working_on_split_data[@]}"; do
+  mkdir -p "${split_transcripts}/${model_checkpoint}"
   for f in "${split_data_path}"/*; do
     talk_id=$(basename "${f}")
     if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
-      mkdir -p "${split_transcripts}/${talk_id}"
       python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${model_checkpoint}" \
         audio_dir="${f}" \
         output_filename="${split_transcripts}/${model_checkpoint}/${talk_id}.manifest" \
