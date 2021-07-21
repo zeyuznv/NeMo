@@ -1,5 +1,8 @@
 import argparse
+import json
 from pathlib import Path
+
+from nemo.collections.asr.metrics.wer import word_error_rate
 
 
 def get_args():
@@ -12,11 +15,20 @@ def get_args():
     return args
 
 
-def read_texts_from
+def read_texts_from_manifest(filepath):
+    result = {}
+    with filepath.open() as f:
+        for line in f:
+            data = json.loads(line)
+            result[str(Path(data["audio_filepath"]).parts[-1])] = data["text"]
+    return result
 
 
 def main():
     args = get_args()
+    hyps = read_texts_from_manifest(args.hyp)
+    refs = read_texts_from_manifest(args.ref)
+
 
 
 
