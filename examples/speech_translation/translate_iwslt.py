@@ -30,7 +30,7 @@ def split_into_segments(text, max_num_chars_in_segment):
     prev_end_sent = 0
     for i in range(0, len(text)):
         if text[i] in [".", "?", "!"]:
-            if i - start > max_num_chars_in_segment:
+            if i - prev_end_segment > max_num_chars_in_segment:
                 segments.append(text[prev_end_segment:prev_end_sent])
                 prev_end_segment = prev_end_sent
                 prev_end_sent = i + 1
