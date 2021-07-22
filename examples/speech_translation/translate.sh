@@ -8,10 +8,6 @@ good_transcript_models=(
   stt_en_jasper10x5dr
 )
 
-translation_models=(
-
-)
-
 work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 translated_dir=translated_transcripts
 long_segments_result="${work_dir}/${translated_dir}/long_segments"
@@ -42,14 +38,14 @@ done
 for ngc_model in "${translation_ngc_models[@]}"; do
   mkdir -p "${long_segments_result}/${ngc_model}"
   for m in "${good_transcript_models[@]}"; do
-    python translate_iwslt.py -p "${ngc_model}" \
+    python translate_iwslt.py -m "${ngc_model}" \
       -i "${punc_transcripts}/${m}.txt" \
       -o "${long_segments_result}/${ngc_model}/${m}.txt"
   done
 
   mkdir -p "${one_sentence_segments_result}/${ngc_model}"
   for m in "${good_transcript_models[@]}"; do
-    python translate_iwslt.py -p "${ngc_model}" \
+    python translate_iwslt.py -m "${ngc_model}" \
       -i "${punc_transcripts}/${m}.txt" \
       -o "${one_sentence_segments_result}/${ngc_model}/${m}.txt" \
       -s
