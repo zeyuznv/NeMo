@@ -23,8 +23,9 @@ for d in "${translated_dir}"/*; do
     second_level="$(basename "${m}")"
     echo "    ${second_level}" | tee -a "${output}"
     for mm in "${m}"/*; do
+      third_level="$(basename "${mm}")"
       bleu=$(sacrebleu "${reference}" -i "${mm}" -m bleu -b -w 4)
-      echo "         ${second_level} ${bleu}" | tee -a "${output}"
+      echo "         ${third_level} ${bleu}" | tee -a "${output}"
     done
   done
 done
