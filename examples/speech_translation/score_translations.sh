@@ -14,6 +14,6 @@ translated_dir=translated_transcripts
 output=bleu_scores.txt
 
 for m in "${good_transcript_models[@]}"; do
-  bleu=$(sacrebleu "${work_dir}/${reference}" -i "${translated_dir}/${m}.txt" -m bleu -b -w 4)
+  bleu=$(sacrebleu "${work_dir}/${reference}" -i "${work_dir}/${translated_dir}/${m}.txt" -m bleu -b -w 4)
   echo "${m} ${bleu}" | tee -a "${output}"
 done
