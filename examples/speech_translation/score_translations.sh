@@ -21,7 +21,10 @@ for d in "${translated_dir}"/*; do
   echo "${first_level}" | tee -a "${output}"
   for m in "${d}"/*; do
     second_level="$(basename "${m}")"
-    bleu=$(sacrebleu "${reference}" -i "${m}.txt" -m bleu -b -w 4)
-    echo "    ${second_level} ${bleu}" | tee -a "${output}"
+    echo "    ${second_level}" | tee -a "${output}"
+    for mm in "${m}"/*; do
+      bleu=$(sacrebleu "${reference}" -i "${mm}" -m bleu -b -w 4)
+      echo "         ${second_level} ${bleu}" | tee -a "${output}"
+    done
   done
 done
