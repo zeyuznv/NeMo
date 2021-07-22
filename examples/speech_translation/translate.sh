@@ -16,7 +16,7 @@ punc_transcripts="${work_dir}/punc_transcripts"
 translation_checkpoints=( ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo )
 translation_ngc_models=( nmt_en_de_transformer12x2 )
 mkdir -p "${long_segments_result}"
-mkdir -p "${one_sentence_segments}"
+mkdir -p "${one_sentence_segments_result}"
 
 for ckpt in "${translation_checkpoints[@]}"; do
   mkdir -p "${long_segments_result}/${ckpt}"
