@@ -10,13 +10,18 @@ good_transcript_models=(
 #)
 
 work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
-reference=iwslt_de_text.txt
-translated_dir=translated_transcripts
+reference="${work_dir}/iwslt_de_text.txt"
+translated_dir="${work_dir}/translated_transcripts"
 output=bleu_scores.txt
 
 > "${output}"
 
-for m in "${good_transcript_models[@]}"; do
-  bleu=$(sacrebleu "${work_dir}/${reference}" -i "${work_dir}/${translated_dir}/${m}.txt" -m bleu -b -w 4)
-  echo "${m} ${bleu}" | tee -a "${output}"
+for d in "${translated_dir}"/*; do
+  first_level="$(basename "${d}")"
+  echo "${first_level}" | tee -a "${output}"
+  for m in "${d}"/*; do
+    second_level="$(basename "${m}")"
+    bleu=$(sacrebleu "${reference}" -i "${m}.txt" -m bleu -b -w 4)
+    echo "    ${second_level} ${bleu}" | tee -a "${output}"
+  done
 done

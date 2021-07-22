@@ -20,11 +20,13 @@ mkdir -p "${long_segments_result}"
 mkdir -p "${one_sentence_segments_result}"
 
 for ckpt in "${translation_checkpoints[@]}"; do
-  mkdir -p "${long_segments_result}/${ckpt}"
+  model_name=$(basename "${ckpt}")
+  save_dir="${long_segments_result}/${model_name}"
+  mkdir -p "${save_dir}"
   for m in "${good_transcript_models[@]}"; do
     python translate_iwslt.py -p "${ckpt}" \
       -i "${punc_transcripts}/${m}.txt" \
-      -o "${long_segments_result}/${ckpt}/${m}.txt"
+      -o "${save_dir}/${m}.txt"
   done
 
   mkdir -p "${one_sentence_segments_result}/${ckpt}"
