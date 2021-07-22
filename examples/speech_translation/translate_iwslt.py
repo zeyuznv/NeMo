@@ -2,6 +2,7 @@ import argparse
 import re
 from pathlib import Path
 
+import nltk
 from nemo.collections.nlp.models import MTEncDecModel
 
 
@@ -15,17 +16,20 @@ def get_args():
     parser.add_argument("--model_path", "-p", type=Path)
     parser.add_argument("--input", "-i", required=True, type=Path)
     parser.add_argument("--output", "-o", required=True, type=Path)
+    parser.add_argument("--one-sentence-segmentation", "-s", action="store_true")
     args = parser.parse_args()
     args.input = args.input.expanduser()
     args.output = args.output.expanduser()
     if args.model_path is not None:
         args.model_path = args.model_path.expanduser()
+    if args.model_path is None and args.model is None or args.model is not None and args.model_path is not None:
+        raise ValueError(f"Exactly one of parameters `--model` and `--model-path` has to be provided. "
+                         f"`--model={args.model}`, `--model-path={args.model_path}`.")
     return args
 
 
 def split_into_segments(text, max_num_chars_in_segment):
     segments = []
-    start = 0
     prev_end_segment = 0
     prev_end_sent = 0
     for i in range(0, len(text)):
@@ -36,21 +40,24 @@ def split_into_segments(text, max_num_chars_in_segment):
                 prev_end_sent = i + 1
             else:
                 prev_end_sent = i + 1
-    if prev_end_sent < len(text):
+    if prev_end_segment < len(text):
         segments.append(text[prev_end_segment:])
     return segments
 
 
 def main():
     args = get_args()
-    pretrained = args.model_path if args.model is None else args.model
-    model = MTEncDecModel.restore_from(pretrained)
+    if args.model is None:
+        model = MTEncDecModel.restore_from(args.model_path)
+    else:
+        model = MTEncDecModel.from_pretrained(args.model)
     with open(args.input) as f:
         texts = f.readlines()
     processed = []
     max_num_chars_in_segment = 512
     for text in texts:
-        segments = split_into_segments(text, max_num_chars_in_segment)
+        segments = nltk.sent_tokenize(text) if args.one_sentence_segmentation \
+            else split_into_segments(text, max_num_chars_in_segment)
         processed_segments = model.translate(segments, source_lang="en", target_lang="de")
         processed.append(SPACE_DEDUP.sub(' ', ' '.join(processed_segments)))
     args.output.parent.mkdir(parents=True, exist_ok=True)
