@@ -10,6 +10,9 @@ TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
 SPACE_DEDUP = re.compile(r' +')
 
 
+nltk.download('punkt')
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", "-m")
