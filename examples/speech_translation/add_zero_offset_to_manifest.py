@@ -15,7 +15,7 @@ def get_args():
 
 def main():
     args = get_args()
-    with args.input.open() as in_f, args.output.open() as out_f:
+    with args.input.open() as in_f, args.output.open('w') as out_f:
         for i, line in enumerate(in_f):
             if i > 0:
                 out_f.write('\n')
