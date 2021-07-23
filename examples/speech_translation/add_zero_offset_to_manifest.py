@@ -21,7 +21,7 @@ def main():
                 out_f.write('\n')
             data = json.loads(line)
             data["offset"] = 0.0
-            data.write(json.dumps(data))
+            out_f.write(json.dumps(data))
 
 
 if __name__ == "__main__":
