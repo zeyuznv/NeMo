@@ -73,13 +73,13 @@ class NormalizerWithAudio(Normalizer):
         lang: language
     """
 
-    def __init__(self, input_case: str, lang: str = 'en'):
-        super().__init__(input_case=input_case, lang=lang)
-        if lang == 'en':
-            from nemo_text_processing.text_normalization.en.taggers.tokenize_and_classify import ClassifyFst
-            from nemo_text_processing.text_normalization.en.verbalizers.verbalize_final import VerbalizeFinalFst
-        self.tagger = ClassifyFst(input_case=input_case, deterministic=False)
-        self.verbalizer = VerbalizeFinalFst(deterministic=False)
+    def __init__(self, input_case: str, lang: str = 'en', deterministic=False):
+        super().__init__(input_case=input_case, lang=lang, deterministic=deterministic)
+        # if lang == 'en':
+        #     from nemo_text_processing.text_normalization.en.taggers.tokenize_and_classify import ClassifyFst
+        #     from nemo_text_processing.text_normalization.en.verbalizers.verbalize_final import VerbalizeFinalFst
+        # self.tagger = ClassifyFst(input_case=input_case, deterministic=False)
+        # self.verbalizer = VerbalizeFinalFst(deterministic=False)
 
     def normalize(
         self,
@@ -115,11 +115,13 @@ class NormalizerWithAudio(Normalizer):
         if n_tagged == -1:
             tagged_texts = rewrite.rewrites(text, self.tagger.fst)
         else:
+            # import pdb; pdb.set_trace()
             tagged_texts = rewrite.top_rewrites(text, self.tagger.fst, nshortest=n_tagged)
 
-        normalized_texts = []
-        for tagged_text in tagged_texts:
-            self._verbalize(tagged_text, normalized_texts)
+        # normalized_texts = []
+        # for tagged_text in tagged_texts:
+        #     self._verbalize(tagged_text, normalized_texts)
+        normalized_texts = tagged_texts
         if len(normalized_texts) == 0:
             raise ValueError()
         if punct_post_process:
@@ -143,6 +145,9 @@ class NormalizerWithAudio(Normalizer):
         try:
             normalized_texts.extend(get_verbalized_text(tagged_text))
         except pynini.lib.rewrite.Error:
+            import pdb
+
+            pdb.set_trace()
             self.parser(tagged_text)
             tokens = self.parser.parse()
             tags_reordered = self.generate_permutations(tokens)
