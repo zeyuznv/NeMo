@@ -22,6 +22,7 @@ from nemo.collections.asr.models.classification_models import EncDecClassificati
 from nemo.collections.asr.models.label_models import ExtractSpeakerEmbeddingsModel
 from nemo.collections.asr.parts.mixins.mixins import DiarizationMixin
 # from nemo.collections.asr.data.audio_to_label import get_segments_from_slices
+from nemo.collections.asr.data.audio_to_label import repeat_signal
 from nemo.collections.asr.parts.utils.speaker_utils import audio_rttm_map, perform_diarization, write_rttm2manifest, get_DER
 from nemo.collections.asr.parts.utils.speaker_utils import get_contiguous_stamps, merge_stamps, labels_to_pyannote_object, rttm_to_labels, labels_to_rttmfile
 from nemo.collections.asr.parts.utils.vad_utils import (
@@ -116,17 +117,17 @@ def get_segments_from_slices(slices, sig, slice_length, shift, audio_signal, aud
     # fix_siglen = True
     fix_siglen = False
     for slice_id in range(slices):
-        start_idx = slice_id * shift
-        end_idx = start_idx + slice_length
+        start_idx = int(slice_id * shift)
+        end_idx = int(start_idx + slice_length)
         signal = sig[start_idx:end_idx]
+        audio_lengths.append(len(signal))
         if len(signal) < slice_length:
             signal = repeat_signal(signal, len(signal), slice_length)
         audio_signal.append(signal)
         
-        if fix_siglen:
-            audio_lengths.append(len(signal))
-        else:
-            audio_lengths.append(slice_length)
+        # if fix_siglen:
+            # audio_lengths.append(len(signal))
+        # else:
     return audio_signal, audio_lengths
 
 
@@ -399,6 +400,8 @@ class FrameASR:
                                dtype=np.float32)
         self.offset = offset
         # ipdb.set_trace()
+        
+
         # >>> For diarization
         self.osd_model = osd_model
         self.time_stamps = {}
@@ -425,11 +428,13 @@ class FrameASR:
         self.silence_logit_frame_threshold = 3
         self.spaces = []
         # self.nonspeech_threshold = 20 #minimun width to consider non-speech activity 
+        
         self.nonspeech_threshold = 10 #minimun width to consider non-speech activity 
         self.calibration_offset = -0.18
         self.time_stride = self.timestep_duration
         self.overlap_frames_count = int(self.n_frame_overlap/self.sr)
         self.segment_list = []
+        self.segment_abs_time_range_list = []
 
 
         # self.
@@ -541,7 +546,7 @@ class FrameASR:
        
         return spaces
    
-    def _get_speech_labels(self, probs, non_speech):
+    def _get_speech_labels(self, probs, non_speech, ROUND=2):
         offset_sec = self.frame_index - self.transcribe_delay - self.overlap_frames_count
         frame_offset =  float((offset_sec + self.calibration_offset)/self.time_stride)
         speech_labels = []
@@ -556,7 +561,8 @@ class FrameASR:
             start = frame_offset * self.time_stride
             first_end = (non_speech[0][0]+frame_offset)*self.time_stride
             # speech_labels = ["{:.3f} {:.3f} speech".format(start, first_end)]
-            speech_labels.append([(start, first_end)])
+            start, first_end = round(start, ROUND), round(first_end, ROUND)
+            speech_labels.extend([(start, first_end)])
             if len(non_speech) > 1:
                 for idx in range(len(non_speech)-1):
                     start = (non_speech[idx][1] + frame_offset)*self.time_stride
@@ -567,7 +573,9 @@ class FrameASR:
             last_start = (non_speech[-1][1] + frame_offset)*self.time_stride
             last_end = (len(probs) -1 + frame_offset)*self.time_stride
             # speech_labels.append("{:.3f} {:.3f} speech".format(last_start, last_end))
-            speech_labels.append([(last_start, last_end)])
+
+            last_start, last_end = round(last_start, ROUND), round(last_end, ROUND)
+            speech_labels.extend([(last_start, last_end)])
 
         return speech_labels
 
@@ -579,14 +587,12 @@ class FrameASR:
        
         logits = infer_signal(asr_model, self.buffer).cpu().numpy()[0]
         speech_labels = self._get_ASR_based_VAD_timestamps(logits)
-        # ipdb.set_trace()
-        # print(speech_labels)
+       
         self.frame_stt, self.frame_end = self._get_absolute_frame_time() 
         buffer_start = self.frame_stt + self.calibration_offset - float(self.overlap_frames_count)
-        # print(self.frame_stt - float(self.overlap_frames_count) )
 
         self._get_diar_segments(buffer_start, speech_labels)
-        # curr_speaker = self._online_diarization(self.segments)
+
         curr_speaker = 1
         decoded = self._greedy_decoder(
             logits[self.n_timesteps_overlap:-self.n_timesteps_overlap], 
@@ -596,41 +602,111 @@ class FrameASR:
             logits,
             self.vocab
         )
-        # print(f"spaces: {spaces}")
         self.frame_index += 1
         return decoded[:len(decoded)-offset], curr_speaker, whole_buffer_text
 
-    def _get_diar_segments(buffer_start, speech_labels):
+    def _get_diar_segments(self, buffer_start, speech_labels):
         if buffer_start > 0:
-            # cont_stamps = get_segments_from_slices(speech_labels)
+            update_start_abs_time_sec, buffer_end = self._get_update_abs_time(buffer_start)
             if self.segment_list == []:
-                active_speech_segs = speech_labels  
+                speech_labels_initial = [(buffer_start, buffer_end),]
+                sigs_list, sig_rangel_list = self._get_segments_from_buffer(buffer_start, 
+                                                                            speech_labels_initial)
+                self.segment_list, self.segment_abs_time_range_list = sigs_list, sig_rangel_list
+            else: 
+                # Remove the old segments 
+                # Initialize the cursor as the end of the last range 
+                # cursor = self.segment_abs_time_range_list[-1][1]
+                cursor = buffer_start + int(self.n_frame_overlap/self.sr)
+                while True:
+                    t_range = self.segment_abs_time_range_list[-1]
+
+                    mid = np.mean(t_range)
+                    # if t_range[0] < update_start_abs_time_sec <= t_range[1]:
+                    print(" self.frame_index:", 
+                            self.frame_index)
+                    print(" t_range:", 
+                            t_range, 
+                          " update_start_abs_time_sec:", 
+                            update_start_abs_time_sec)
+                    # if update_start_abs_time_sec - t_range[0] < self.embed_seg_len:
+                    if cursor < mid:
+                        self.segment_abs_time_range_list.pop()
+                        self.segment_list.pop()
+                        cursor = t_range[0]
+                        print(" update_start_abs_time_sec - t_range[0]:", 
+                                update_start_abs_time_sec - t_range[0],
+                              " update_start_abs_time_sec:", 
+                                update_start_abs_time_sec, 
+                              " ---> Popping : ", t_range, 
+                              " now cursor:", 
+                                    cursor)
+                    else:
+                        break
+
+                speech_labels_for_update = self._get_speech_labels_for_update(buffer_start, 
+                                                                              speech_labels, 
+                                                                              new_start_abs_sec)
+                sigs_list, sig_rangel_list = self._get_segments_from_buffer(buffer_start, 
+                                                                            speech_labels_for_update)
+
+                # Replace with the newly accepted segments.
+                self.segment_list.extend(sigs_list)
+                self.segment_abs_time_range_list.extend(sig_rangel_list)
+
+                # print(" self.segment_abs_time_range_list: ", self.segment_abs_time_range_list[-5:])
+                print(" self.segment_abs_time_range_list: ", self.segment_abs_time_range_list)
+                print(" Speech labels list: ", speech_labels)
+
+    def _get_update_abs_time(self, buffer_start):
+        new_bufflen_sec = self.n_frame_len / self.sr
+        n_buffer_samples = int(len(self.buffer)/self.sr)
+        total_buffer_len_sec = n_buffer_samples/self.frame_len
+        buffer_end = buffer_start + total_buffer_len_sec
+        # ipdb.set_trace()
+        return (buffer_end - new_bufflen_sec), buffer_end
+
+    def _get_speech_labels_for_update(self, buffer_start, speech_labels, new_start_abs_sec):
+        new_speech_labels = []
+        print("_get_speech_labels_for_update: got, new_start_abs_sec :", new_start_abs_sec)
+        for t_range in speech_labels: 
+            if t_range[0] < new_start_abs_sec < t_range[1]:
+                new_speech_labels.append((new_start_abs_sec, t_range[1]))
             else:
-                active_speech_segs = _get_new_speech_labels(speech_labels)
+                new_speech_labels.append((t_range[0], t_range[1]))
+        return new_speech_labels    
 
-        return 
 
-    def _get_segments_from_buffer(self, buffer_start, active_speech_segs):
+    def _get_segments_from_buffer(self, buffer_start, active_speech_segs, ROUND=3):
+        sigs_list = []
+        sig_rangel_list = []
+        n_seglen_samples = int(self.embed_seg_len*self.sr)
+        n_seghop_samples = int(self.embed_seg_hop*self.sr)
+        offset = active_speech_segs[0][0]
         for idx, range_t in enumerate(active_speech_segs):
             sigs, sig_lens = [], []
-            stt_b = range_t[0] - buffer_start
-            end_b = range_t[1] - buffer_start
-            dur = float(end_b - stt_b) 
-            base = math.ceil((dur - self.embed_seg_len) / self.embed_seg_hop)
+            stt_b = int((range_t[0] - buffer_start) * self.sr)
+            end_b = int((range_t[1] - buffer_start) * self.sr)
+            n_dur_samples = int(end_b - stt_b)
+            base = math.ceil((n_dur_samples - n_seglen_samples) / n_seghop_samples)
             slices = 1 if base < 0 else base + 1
-            sigs, sig_lens= get_segments_from_slices(slices, 
-                                                     self.buffer[stt_b:end_b],
-                                                     self.embed_seg_len,
-                                                     self.embed_seg_hop,
+            slices += 1  # The last short segment
+            sigs, sig_lens = get_segments_from_slices(slices, 
+                                                     torch.from_numpy(self.buffer[stt_b:end_b]),
+                                                     n_seglen_samples,
+                                                     n_seghop_samples, 
                                                      sigs, 
                                                      sig_lens)
+            sigs_list.extend(sigs)
+            for seg_idx, sig_len in enumerate(sig_lens):
+                seg_len_sec = float(sig_len / self.sr)
+                start_abs_sec = round(float(offset + seg_idx*self.embed_seg_hop), ROUND)
+                end_abs_sec = round(float(offset + seg_idx*self.embed_seg_hop + seg_len_sec), ROUND)
+                sig_rangel_list.append([start_abs_sec, end_abs_sec])
 
-
-
-    def _get_current_space():
-        for interval in self.spaces:
-            pass
-        return None
+        print("sig_rangel_list:", sig_rangel_list)
+        ipdb.set_trace()
+        return sigs_list, sig_rangel_list
 
     
     @torch.no_grad()
@@ -709,8 +785,8 @@ if online_simulation:
         str_stt_buff = datetime.timedelta(seconds=asr.frame_stt + asr.calibration_offset - float(asr.overlap_frames_count))
         str_end_buff = datetime.timedelta(seconds=asr.frame_end + asr.calibration_offset+ float(asr.overlap_frames_count))
 
-        if len(text) > 0 and text[-1] == " ":
-            print("")
+        # if len(text) > 0 and text[-1] == " ":
+            # print("")
             # print(f" [{str_m} speaker {curr_speaker}]", raw_unmerged)
         
         # if len(text):
@@ -719,7 +795,6 @@ if online_simulation:
             # print(f" [{str_m} speaker {curr_speaker}]", text)
             # print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", whole_buffer_text)
             print(f" [{uniq_key}|{str_stt_buff}~{str_end_buff} speaker {curr_speaker}]", whole_buffer_text)
-            print(asr.spaces)
             # print(f" [{uniq_key}|{str_stt}~{str_end} speaker {curr_speaker}]", unmerged)
             # ipdb.set_trace()
             empty_counter = asr.offset
@@ -774,6 +849,7 @@ else:
             global sdata
             # signal = np.frombuffer(in_data, dtype=np.int16)
             signal = sdata[CHUNK_SIZE*(buffer_counter-1):CHUNK_SIZE*(buffer_counter)]
+
             buffer_counter += 1
             # signal = signal/np.max(signal)
             # print("signal:", buffer_counter, np.shape(signal), signal)
