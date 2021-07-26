@@ -28,25 +28,6 @@ from nemo.utils import logging
 # List of valid file formats (prioritized by order of importance)
 VALID_FILE_FORMATS = ';'.join(['wav', 'mp3', 'flac'] + [fmt.lower() for fmt in valid_sf_formats.keys()])
 
-def get_segments_from_slices(slices, slice_length, shift, sig, audio_signal):
-    """create short speech segments from sclices
-    Args:
-        slices (int): the number of slices to be created
-        slice_length (int): the lenghth of each slice
-        shift (int): the amount of slice window shift
-        sig (FloatTensor): the tensor that contains input signal
-
-    Returns:
-        audio_signal (list): list of sliced input signal
-    """
-    for slice_id in range(slices):
-        start_idx = slice_id * shift
-        end_idx = start_idx + slice_length
-        signal = sig[start_idx:end_idx]
-        if len(signal) < slice_length:
-            signal = repeat_signal(signal, len(signal), slice_length)
-        audio_signal.append(signal)
-    return audio_signal
 
 def repeat_signal(signal, sig_len, required_length):
     """repeat signal to make short signal to have required_length
@@ -63,6 +44,7 @@ def repeat_signal(signal, sig_len, required_length):
     rep_sig = torch.cat(repeat * [signal])
     signal = torch.cat((rep_sig, sub))
     return signal
+
 
 def normalize(signal):
     """normalize signal
