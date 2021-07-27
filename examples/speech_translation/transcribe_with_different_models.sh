@@ -40,7 +40,7 @@ mkdir -p "${output_dir}"
 for model_checkpoint in "${nemo_asr_checkpoints[@]}"; do
   python ~/NeMo/examples/asr/transcribe_speech.py model_path="${checkpoint_dir}/${model_checkpoint}" \
     audio_dir="${audio_dir}" \
-    output_filename="${output_dir}/$(basename model_checkpoint).manifest" \
+    output_filename="${output_dir}/$(basename "${model_checkpoint}").manifest" \
     cuda=true \
     batch_size=1
 done
@@ -54,7 +54,7 @@ for model_checkpoint in "${nemo_asr_checkpoints[@]}"; do
     if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
       python ~/NeMo/examples/asr/transcribe_speech.py model_path="${checkpoint_dir}/${model_checkpoint}" \
         audio_dir="${f}" \
-        output_filename="${split_transcripts}/$(basename model_checkpoint)/${talk_id}.manifest" \
+        output_filename="${split_transcripts}/$(basename "${model_checkpoint}")/${talk_id}.manifest" \
         cuda=true \
         batch_size=4
     fi
