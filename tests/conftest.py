@@ -166,14 +166,15 @@ def pytest_configure(config):
         if exists(test_dir):
             rmtree(test_dir)
         # Create one .data folder.
-        mkdir(test_dir)
-        # Download
-        urllib.request.urlretrieve(url, test_data_archive)
-        # Extract tar
-        print("Extracting the `{}` test archive, please wait...".format(test_data_archive))
-        tar = tarfile.open(test_data_archive)
-        tar.extractall(path=test_dir)
-        tar.close()
+        if not exists(test_dir):
+            mkdir(test_dir)
+            # Download
+            urllib.request.urlretrieve(url, test_data_archive)
+            # Extract tar
+            print("Extracting the `{}` test archive, please wait...".format(test_data_archive))
+            tar = tarfile.open(test_data_archive)
+            tar.extractall(path=test_dir)
+            tar.close()
     else:
         print(
             "A valid `{}` test archive ({}B) found in the `{}` folder.".format(
