@@ -33,11 +33,33 @@ nemo_asr_checkpoints=(
   sel_jarvisasrset_d512_adamwlr2_wd0_aug10x0.05_sp128_500e-last.nemo
 )
 
+checkpoint_dir=~/checkpoints
 echo "Creating output directory ${output_dir}"
 mkdir -p "${output_dir}"
 
+for model_checkpoint in "${nemo_asr_checkpoints[@]}"; do
+  python ~/NeMo/examples/asr/transcribe_speech.py model_path="${checkpoint_dir}/${model_checkpoint}" \
+    audio_dir="${audio_dir}" \
+    output_filename="${output_dir}/$(basename model_checkpoint).manifest" \
+    cuda=true \
+    batch_size=1
+done
+
 split_data_path="${audio_dir}/../split"
 split_transcripts="${audio_dir}/../split_transcripts"
+for model_checkpoint in "${nemo_asr_checkpoints[@]}"; do
+  mkdir -p "${split_transcripts}/${model_checkpoint}"
+  for f in "${split_data_path}"/*; do
+    talk_id=$(basename "${f}")
+    if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
+      python ~/NeMo/examples/asr/transcribe_speech.py model_path="${checkpoint_dir}/${model_checkpoint}" \
+        audio_dir="${f}" \
+        output_filename="${split_transcripts}/$(basename model_checkpoint)/${talk_id}.manifest" \
+        cuda=true \
+        batch_size=4
+    fi
+  done
+done
 for pretrained_name in "${models_working_on_split_data[@]}" "${models_working_on_not_split_data[@]}"; do
   mkdir -p "${split_transcripts}/${pretrained_name}"
   for f in "${split_data_path}"/*; do
@@ -46,19 +68,6 @@ for pretrained_name in "${models_working_on_split_data[@]}" "${models_working_on
       python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${pretrained_name}" \
         audio_dir="${f}" \
         output_filename="${split_transcripts}/${pretrained_name}/${talk_id}.manifest" \
-        cuda=true \
-        batch_size=4
-    fi
-  done
-done
-for model_checkpoint in "${nemo_asr_checkpoints[@]}"; do
-  mkdir -p "${split_transcripts}/${model_checkpoint}"
-  for f in "${split_data_path}"/*; do
-    talk_id=$(basename "${f}")
-    if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
-      python ~/NeMo/examples/asr/transcribe_speech.py model_path="${model_checkpoint}" \
-        audio_dir="${f}" \
-        output_filename="${split_transcripts}/$(basename model_checkpoint)/${talk_id}.manifest" \
         cuda=true \
         batch_size=4
     fi
@@ -75,13 +84,7 @@ for pretrained_name in "${models_working_on_not_split_data[@]}"; do
 done
 
 
-for model_checkpoint in "${nemo_asr_checkpoints[@]}"; do
-  python ~/NeMo/examples/asr/transcribe_speech.py model_path="${model_checkpoint}" \
-    audio_dir="${audio_dir}" \
-    output_filename="${output_dir}/$(basename model_checkpoint).manifest" \
-    cuda=true \
-    batch_size=1
-done
+
 
 
 #split_data_path="${audio_dir}/../split"
