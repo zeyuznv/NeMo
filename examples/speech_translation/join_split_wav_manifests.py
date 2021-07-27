@@ -52,11 +52,19 @@ def get_corresponding_not_split_wav_file(file_manifest, not_split_wav_dir):
     return not_split_wav_file
 
 
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+
 def join_manifests(dir_, output_dir, not_split_wav_dir):
     last_name = dir_.parts[-1]
     joined_name = output_dir / Path(last_name + '.manifest')
     manifest = ""
-    for elem in dir_.iterdir():
+    for elem in sorted([x for x in dir_.iterdir() if is_int(x.stem)], key=lambda x: int(x.stem)):
         if elem.is_file() and elem.suffix == ".manifest":
             joined_text, joined_duration, text_key = get_joined_text_and_duration(elem)
             not_split_wav_file = get_corresponding_not_split_wav_file(elem, not_split_wav_dir)
