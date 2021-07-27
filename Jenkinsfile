@@ -58,21 +58,20 @@ pipeline {
       }
     }
 
-    stage('L0: Unit Tests GPU') {
-      steps {
-        sh 'pytest -m "not pleasefixme" --with_downloads --relax_numba_compat'
-      }
-    }
-
-    stage('L0: Unit Tests CPU') {
-      when {
-        anyOf {
-          branch 'main'
-          changeRequest target: 'main'
+    stage('Unit tests') {
+    failFast true
+      parallel {  
+        stage('L0: Unit Tests GPU') {
+          steps {
+            sh 'pytest -m "not pleasefixme" --with_downloads --relax_numba_compat'
+          }
         }
-      }
-      steps {
-        sh 'CUDA_VISIBLE_DEVICES="" pytest -m "not pleasefixme" --cpu --with_downloads --relax_numba_compat'
+
+        stage('L0: Unit Tests CPU') {      
+          steps {
+            sh 'CUDA_VISIBLE_DEVICES="" pytest -m "not pleasefixme" --cpu --with_downloads --relax_numba_compat'
+          }
+        }
       }
     }
 
