@@ -25,7 +25,7 @@ def get_joined_text_and_duration(file_name):
     joined_duration = None
     text_key = None
     with file_name.open() as f:
-        data = sorted([json.loads(line) for line in f], key=lambda x: int(Path(x).stem))
+        data = sorted([json.loads(line) for line in f], key=lambda x: int(Path(x["audio_filepath"]).stem))
         if text_key is None:
             text_key = "text" if "text" in data[0] else "pred_text"
         for d in data:
