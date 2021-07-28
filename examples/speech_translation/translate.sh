@@ -45,19 +45,18 @@ for i in {0..1}; do
   mkdir -p "${one_sentence_segments_result}"
   for ckpt in "${translation_checkpoints[@]}"; do
     model_name=$(basename "${ckpt}")
-    save_dir="${long_segments_result}/${model_name}"
-    mkdir -p "${save_dir}"
+    mkdir -p "${long_segments_result}/${model_name}"
     for m in "${good_transcript_models[@]}"; do
       python translate_iwslt.py -p "${ckpt}" \
         -i "${punc_transcripts_dir}/${m}.txt" \
-        -o "${save_dir}/${m}.txt"
+        -o "${long_segments_result}/${model_name}/${m}.txt"
     done
 
     mkdir -p "${one_sentence_segments_result}/${model_name}"
     for m in "${good_transcript_models[@]}"; do
       python translate_iwslt.py -p "${ckpt}" \
         -i "${punc_transcripts_dir}/${m}.txt" \
-        -o "${save_dir}/${m}.txt" \
+        -o "${one_sentence_segments_result}/${model_name}/${m}.txt" \
         -s
     done
   done
