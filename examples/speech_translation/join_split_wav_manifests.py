@@ -25,15 +25,15 @@ def get_joined_text_and_duration(file_name):
     joined_duration = None
     text_key = None
     with file_name.open() as f:
-        for line in f:
-            data = json.loads(line)
-            if text_key is None:
-                text_key = "text" if "text" in data else "pred_text"
+        data = sorted([json.loads(line) for line in f], key=lambda x: int(Path(x).stem))
+        if text_key is None:
+            text_key = "text" if "text" in data[0] else "pred_text"
+        for d in data:
             if joined_duration is None and "duration" in data:
                 joined_duration = 0.0
-            joined_text += ' ' + data[text_key]
+            joined_text += ' ' + d[text_key]
             if joined_duration is not None:
-                joined_duration += data["duration"]
+                joined_duration += d["duration"]
     return SPACE_DEDUP.sub(' ', joined_text), joined_duration, text_key
 
 
@@ -64,7 +64,7 @@ def join_manifests(dir_, output_dir, not_split_wav_dir):
     last_name = dir_.parts[-1]
     joined_name = output_dir / Path(last_name + '.manifest')
     manifest = ""
-    for elem in sorted([x for x in dir_.iterdir() if is_int(x.stem)], key=lambda x: int(x.stem)):
+    for elem in dir_.iterdir():
         if elem.is_file() and elem.suffix == ".manifest":
             joined_text, joined_duration, text_key = get_joined_text_and_duration(elem)
             not_split_wav_file = get_corresponding_not_split_wav_file(elem, not_split_wav_dir)
