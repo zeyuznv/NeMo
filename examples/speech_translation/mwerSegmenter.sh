@@ -10,7 +10,7 @@ for tr in "${translations[@]}"; do
       for translated_text in $(ls "${workdir}/${tr}/${tr_segm}"); do
         ./segmentBasedOnMWER.sh "${workdir}/IWSLT.TED.tst2019.en-de.en.xml" \
           "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
-          "${workdir}/${tr_segm}/${tr_model}/${translated_text}" \
+          "${workdir}/${tr}/${tr_segm}/${tr_model}/${translated_text}" \
           "${translated_text%.*}" \
           German \
           "${translated_text%.*}.xml" \
