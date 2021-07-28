@@ -1,3 +1,5 @@
+set -e -x
+
 pretrained_ngc_not_only_segmented_data=(
   QuartzNet15x5Base-En
   stt_en_jasper10x5dr
@@ -24,8 +26,8 @@ pretrained_ngc_only_segmented_data=(
 
 work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 
-segmented_transcripts_dir="${work_dir}/transcripts_not_segmented_input"
-unsegmented_transcripts_dir="${work_dir}/transcripts_segmented_input"
+segmented_transcripts_dir="${work_dir}/transcripts_segmented_input"
+unsegmented_transcripts_dir="${work_dir}/transcripts_not_segmented_input"
 
 punc_segmented_transcripts_dir="${work_dir}/punc_transcripts_not_segmented_input"
 punc_unsegmented_transcripts_dir="${work_dir}/punc_transcripts_segmented_input"
@@ -40,3 +42,5 @@ for m in "${pretrained_ngc_not_only_segmented_data[@]}"; do
     -p "${unsegmented_transcripts_dir}/${m}.manifest" \
     -o "${punc_unsegmented_transcripts_dir}/${m}.txt"
 done
+
+set +e +x

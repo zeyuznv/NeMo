@@ -1,4 +1,6 @@
 #!/usr/bin/bash
+set -e -x
+
 pretrained_ngc_not_only_segmented_data=(
   QuartzNet15x5Base-En
   stt_en_jasper10x5dr
@@ -82,3 +84,5 @@ for pretrained_name in "${pretrained_ngc_not_only_segmented_data[@]}"; do
     cuda=true \
     batch_size=1
 done
+
+set +e +x

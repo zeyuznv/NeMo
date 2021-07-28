@@ -1,3 +1,5 @@
+set -e -x
+
 good_transcript_models=(
   stt_en_citrinet_1024_gamma_0_25
   stt_en_citrinet_1024
@@ -29,3 +31,5 @@ for d in "${translated_dir}"/*; do
     done
   done
 done
+
+set +e +x

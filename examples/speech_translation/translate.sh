@@ -1,3 +1,5 @@
+set -e -x
+
 good_transcript_models=(
   stt_en_citrinet_1024_gamma_0_25
   stt_en_citrinet_1024
@@ -54,3 +56,5 @@ for ngc_model in "${translation_ngc_models[@]}"; do
       -s
   done
 done
+
+set +e +x
