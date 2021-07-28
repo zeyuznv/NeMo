@@ -28,7 +28,8 @@ translated_dirs=( translated_transcripts_segmented translated_transcripts_not_se
 
 punc_transcripts=( "${work_dir}/punc_transcripts_segmented_input" "${work_dir}/transcript_models_only_segmented_data" )
 translation_checkpoints=( ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo )
-translation_ngc_models=( nmt_en_de_transformer12x2 )
+#translation_ngc_models=( nmt_en_de_transformer12x2 )
+declare -a translation_ngc_models
 mkdir -p "${long_segments_result}"
 mkdir -p "${one_sentence_segments_result}"
 
