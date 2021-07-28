@@ -62,22 +62,24 @@ for i in {0..1}; do
     done
   done
 
-  for ngc_model in "${translation_ngc_models[@]}"; do
-    mkdir -p "${long_segments_result}/${ngc_model}"
-    for m in "${good_transcript_models[@]}"; do
-      python translate_iwslt.py -m "${ngc_model}" \
-        -i "${punc_transcripts_dir}/${m}.txt" \
-        -o "${long_segments_result}/${ngc_model}/${m}.txt"
-    done
+  if [ "${#translation_ngc_models[@]}" -ne 0 ]; then
+    for ngc_model in "${translation_ngc_models[@]}"; do
+      mkdir -p "${long_segments_result}/${ngc_model}"
+      for m in "${good_transcript_models[@]}"; do
+        python translate_iwslt.py -m "${ngc_model}" \
+          -i "${punc_transcripts_dir}/${m}.txt" \
+          -o "${long_segments_result}/${ngc_model}/${m}.txt"
+      done
 
-    mkdir -p "${one_sentence_segments_result}/${ngc_model}"
-    for m in "${good_transcript_models[@]}"; do
-      python translate_iwslt.py -m "${ngc_model}" \
-        -i "${punc_transcripts_dir}/${m}.txt" \
-        -o "${one_sentence_segments_result}/${ngc_model}/${m}.txt" \
-        -s
+      mkdir -p "${one_sentence_segments_result}/${ngc_model}"
+      for m in "${good_transcript_models[@]}"; do
+        python translate_iwslt.py -m "${ngc_model}" \
+          -i "${punc_transcripts_dir}/${m}.txt" \
+          -o "${one_sentence_segments_result}/${ngc_model}/${m}.txt" \
+          -s
+      done
     done
-  done
+  fi
 done
 
 set +e +x
