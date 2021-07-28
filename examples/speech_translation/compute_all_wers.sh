@@ -2,8 +2,8 @@ set -e -x
 output_segmented=wer_scores_segmented.txt
 output_not_segmented=wer_scores_not_segmented.txt
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
-pred_dir_segmented="${workdir}/punc_transcripts_segmented_input"
-pred_dir_not_segmented="${workdir}/punc_transcripts_not_segmented_input"
+pred_dir_segmented="${workdir}/transcripts_segmented_input"
+pred_dir_not_segmented="${workdir}/transcripts_not_segmented_input"
 ground_truth="${workdir}/manifest.json"
 > "${output_segmented}"
 > "${output_not_segmented}"
