@@ -30,8 +30,6 @@ punc_transcripts=( "${work_dir}/punc_transcripts_segmented_input" "${work_dir}/t
 translation_checkpoints=( ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo )
 #translation_ngc_models=( nmt_en_de_transformer12x2 )
 declare -a translation_ngc_models
-mkdir -p "${long_segments_result}"
-mkdir -p "${one_sentence_segments_result}"
 
 for i in {0..1}; do
   if [ "${i}" -eq 0 ]; then
@@ -43,6 +41,8 @@ for i in {0..1}; do
   punc_transcripts_dir="${punc_transcripts[i]}"
   long_segments_result="${work_dir}/${translated_dir}/long_segments"
   one_sentence_segments_result="${work_dir}/${translated_dir}/one_sentence_segments"
+  mkdir -p "${long_segments_result}"
+  mkdir -p "${one_sentence_segments_result}"
   for ckpt in "${translation_checkpoints[@]}"; do
     model_name=$(basename "${ckpt}")
     save_dir="${long_segments_result}/${model_name}"
