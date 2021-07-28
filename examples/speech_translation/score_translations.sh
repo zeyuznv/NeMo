@@ -7,7 +7,7 @@ translated_dirs=( translated_transcripts_segmented translated_transcripts_not_se
 outputs=( bleu_scores_segmented.txt bleu_scores_not_segmented.txt )
 
 for i in {0..1}; do
-  translated_dir="${translated_dirs[i]}"
+  translated_dir="${work_dir}/${translated_dirs[i]}"
   output="${outputs[i]}"
   > "${output}"
   for d in "${translated_dir}"/*; do
