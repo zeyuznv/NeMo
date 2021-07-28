@@ -37,7 +37,7 @@ for i in {0..1}; do
   else
     good_transcript_models=("${transcript_models_not_only_segmented_data[@]}")
   fi
-  translated_dir="${translated_dir[i]}"
+  translated_dir="${translated_dirs[i]}"
   punc_transcripts_dir="${punc_transcripts[i]}"
   long_segments_result="${work_dir}/${translated_dir}/long_segments"
   one_sentence_segments_result="${work_dir}/${translated_dir}/one_sentence_segments"
