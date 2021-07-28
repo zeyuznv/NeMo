@@ -1,0 +1,10 @@
+CitriNet-1024-8x-Stride-Gamma-0.25.nemo 0.06860502299953262
+Citrinet-1024-SPE-Unigram-1024-Jarvis-ASRSet-2.0_no_weight_decay_e250-averaged.nemo 0.05810149312473864
+QuartzNet15x5Base-En 0.13479939979829286
+stt_en_citrinet_1024_gamma_0_25 0.1059946375421248
+stt_en_citrinet_1024 0.10466632228863798
+stt_en_citrinet_256_gamma_0_25 0.12090128649792144
+stt_en_citrinet_256 0.1289449733107028
+stt_en_citrinet_512_gamma_0_25 0.11512065530219172
+stt_en_citrinet_512 0.11610459252699677
+stt_en_jasper10x5dr 0.1181708606990874
