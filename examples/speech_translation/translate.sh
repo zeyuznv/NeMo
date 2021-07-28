@@ -53,7 +53,7 @@ for i in {0..1}; do
         -o "${save_dir}/${m}.txt"
     done
 
-    mkdir -p "${one_sentence_segments_result}/${ckpt}"
+    mkdir -p "${one_sentence_segments_result}/${model_name}"
     for m in "${good_transcript_models[@]}"; do
       python translate_iwslt.py -p "${ckpt}" \
         -i "${punc_transcripts_dir}/${m}.txt" \
