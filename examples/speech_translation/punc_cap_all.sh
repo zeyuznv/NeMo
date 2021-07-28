@@ -29,8 +29,8 @@ work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 segmented_transcripts_dir="${work_dir}/transcripts_segmented_input"
 unsegmented_transcripts_dir="${work_dir}/transcripts_not_segmented_input"
 
-punc_segmented_transcripts_dir="${work_dir}/punc_transcripts_not_segmented_input"
-punc_unsegmented_transcripts_dir="${work_dir}/punc_transcripts_segmented_input"
+punc_segmented_transcripts_dir="${work_dir}/punc_transcripts_segmented_input"
+punc_unsegmented_transcripts_dir="${work_dir}/punc_transcripts_not_segmented_input"
 
 for m in "${pretrained_ngc_not_only_segmented_data[@]}" "${pretrained_ngc_only_segmented_data[@]}"; do
   python punc_cap.py -a "${work_dir}/manifest.json" \
