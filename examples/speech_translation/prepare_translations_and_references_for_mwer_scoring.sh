@@ -1,3 +1,4 @@
+set -e -x
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 
 python xml_2_text_segs_2_lines.py -i "${workdir}/IWSLT.TED.tst2019.en-de.de.no_sounds.xml" \
@@ -22,3 +23,4 @@ for segmentation in $(ls "${translations_after_mwer}"); do
     done
   done
 done
+set +e +x
