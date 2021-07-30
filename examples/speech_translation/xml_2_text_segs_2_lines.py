@@ -21,7 +21,7 @@ def main():
     soup = BeautifulSoup(text)
     result = ""
     for i, seg in enumerate(soup.findAll("seg")):
-        result += seg.text + '\n'
+        result += seg.text.strip() + '\n'
     with args.output.open('w') as f:
         f.write(result)
 
