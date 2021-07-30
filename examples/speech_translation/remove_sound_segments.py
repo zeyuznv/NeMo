@@ -46,7 +46,14 @@ def main():
     src, src_filtered_segments = read_and_filter(args.input_src)
     tgt, tgt_filtered_segments = read_and_filter(args.input_tgt)
     if src_filtered_segments != tgt_filtered_segments:
-        raise ValueError("Different segments were removed from source and target sets.")
+        docs_with_different_removals = {}
+        for k in src_filtered_segments.keys():
+            if src_filtered_segments[k] != tgt_filtered_segments[k]:
+                docs_with_different_removals[k] = (src_filtered_segments[k], tgt_filtered_segments[k])
+        raise ValueError(f"Different segments were removed from source and target sets. Different removals: "
+                         f"{docs_with_different_removals}")
+    else:
+        print("Removals:", src_filtered_segments)
     with args.output_src.open('w') as sf, args.output_tgt.open('w') as tf:
         sf.write(str(src))
         tf.write(str(tgt))
