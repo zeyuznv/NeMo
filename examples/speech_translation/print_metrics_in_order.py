@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 
-ADD_COLON_RE = re.compile("(\\w)(?=\n | [0-9])")
+ADD_COLON_RE = re.compile("([a-z])(?=\n | [0-9])")
 
 
 ORDER = [
