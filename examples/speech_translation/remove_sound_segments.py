@@ -33,7 +33,7 @@ def read_and_filter(file_path):
         count = 1
         for seg in doc.findAll("seg"):
             if SOUNDS_DESCR.match(seg.text):
-                removed[doc["docid"]] = seg["id"]
+                removed[doc["docid"]].append(seg["id"])
                 seg.extract()
             else:
                 seg["id"] = str(count)
