@@ -69,8 +69,5 @@ def main():
     print_data(data, args.order)
 
 
-
-
-
 if __name__ == "__main__":
     main()
