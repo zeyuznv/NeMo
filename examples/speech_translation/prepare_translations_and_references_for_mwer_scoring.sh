@@ -13,7 +13,7 @@ for segmentation in $(ls "${translations_after_mwer}"); do
       for xml_file in $(ls "${translations_after_mwer}/${segmentation}/${inp_length}/${tr_model}"); do
         if [ "${xml_file##*.}" = "xml" ]; then
           asr_model="${xml_file%.*}"
-          save_path="${workdir}/${segmentation}_mwer/${segmentation}/${inp_length}/${tr_model}"
+          save_path="${workdir}/${segmentation}_mwer/${inp_length}/${tr_model}"
           mkdir -p "${save_path}"
           python xml_2_text_segs_2_lines.py \
             -i "${translations_after_mwer}/${segmentation}/${inp_length}/${tr_model}/${xml_file}" \
