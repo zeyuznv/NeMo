@@ -49,11 +49,11 @@ def print_data(data, order):
     values = list(data.values())
     if isinstance(values[0], float):
         for key in order:
-            if key in data:
+            if f"{key}.txt" in data:
                 print(key)
         for key in order:
-            if key in data:
-                print(data[key])
+            if f"{key}.txt" in data:
+                print(data[f"{key}.txt"])
     else:
         for k, v in data.items():
             print(f'{k}:')
