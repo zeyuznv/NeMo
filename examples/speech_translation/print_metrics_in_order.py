@@ -31,7 +31,7 @@ ORDER = [
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("input")
+    parser.add_argument("input", type=Path)
     parser.add_argument("--order", "-o", type=Path, default=ORDER)
     args = parser.parse_args()
     if isinstance(args.order, Path):
