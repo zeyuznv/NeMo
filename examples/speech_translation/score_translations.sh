@@ -2,7 +2,7 @@ set -e -x
 
 
 work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
-reference=iwslt_de_text.txt
+reference="${work_dir}/iwslt_de_text.txt"
 translated_dirs=(
   translated_transcripts_segmented
   translated_transcripts_not_segmented
