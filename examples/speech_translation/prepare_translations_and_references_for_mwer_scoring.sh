@@ -1,7 +1,7 @@
 set -e -x
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 
-python xml_2_text_segs_2_lines.py -i "${workdir}/IWSLT.TED.tst2019.en-de.de.no_sounds.xml" \
+python xml_2_text_segs_2_lines.py -i "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
   -o "${workdir}/iwslt_de_text_by_segs.txt"
 
 translations_after_mwer="${workdir}/mwerSegmented"
