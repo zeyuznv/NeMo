@@ -2,12 +2,7 @@ set -e -x
 
 
 work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
-references=(
-  iwslt_de_text.txt
-  iwslt_de_text.txt
-  iwslt_de_text_by_segs.txt
-  iwslt_de_text_by_segs.txt
-)
+reference=iwslt_de_text.txt
 translated_dirs=(
   translated_transcripts_segmented
   translated_transcripts_not_segmented
@@ -18,7 +13,6 @@ outputs=( bleu_scores_segmented.txt bleu_scores_not_segmented.txt bleu_scores_se
 
 for i in {0..3}; do
   translated_dir="${work_dir}/${translated_dirs[i]}"
-  reference="${work_dir}/${references[i]}"
   output="${outputs[i]}"
   if [[ -d "${translated_dir}" && -f "${reference}" ]]; then
     > "${output}"

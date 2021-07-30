@@ -22,11 +22,11 @@ bash punc_cap_all.sh
 printf "\nTranslation.."
 bash translate.sh
 
-printf "\nRemoving sound segments.."
-python remove_sound_segments.py -s "${workdir}/IWSLT.TED.tst2019.en-de.en.xml" \
-  -t "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
-  -S "${workdir}/IWSLT.TED.tst2019.en-de.en.no_sounds.xml" \
-  -T "${workdir}/IWSLT.TED.tst2019.en-de.de.no_sounds.xml"
+#printf "\nRemoving sound segments.."
+#python remove_sound_segments.py -s "${workdir}/IWSLT.TED.tst2019.en-de.en.xml" \
+#  -t "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
+#  -S "${workdir}/IWSLT.TED.tst2019.en-de.en.no_sounds.xml" \
+#  -T "${workdir}/IWSLT.TED.tst2019.en-de.de.no_sounds.xml"
 
 printf "\nCreating de ground truth.."
 bash create_de_ground_truth.sh
