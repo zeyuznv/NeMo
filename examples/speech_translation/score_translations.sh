@@ -18,7 +18,7 @@ outputs=( bleu_scores_segmented.txt bleu_scores_not_segmented.txt bleu_scores_se
 
 for i in {0..3}; do
   translated_dir="${work_dir}/${translated_dirs[i]}"
-  reference="${work_dir}/${translated_dirs[i]}"
+  reference="${work_dir}/${references[i]}"
   output="${outputs[i]}"
   if [[ -d "${translated_dir}" && -f "${reference}" ]]; then
     > "${output}"
