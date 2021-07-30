@@ -14,7 +14,7 @@ translated_dirs=(
   translated_transcripts_segmented_mwer
   translated_transcripts_not_segmented_mwer
 )
-outputs=( bleu_scores_segmented.txt bleu_scores_not_segmented.txt )
+outputs=( bleu_scores_segmented.txt bleu_scores_not_segmented.txt bleu_scores_segmented_mwer.txt bleu_scores_not_segmented_mwer.txt )
 
 for i in {0..3}; do
   translated_dir="${work_dir}/${translated_dirs[i]}"
