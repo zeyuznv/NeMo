@@ -5,7 +5,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 
-SOUNDS_DESCR = re.compile(r'^\([^)]+\)$')  # (Applause) (Laughter) (Silence):
+SOUNDS_DESCR = re.compile(r'^\([^)]+\)( \([^)]+\))*$')  # (Applause) (Laughter) (Silence):
 
 
 def get_args():

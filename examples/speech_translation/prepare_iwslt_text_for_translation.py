@@ -10,7 +10,7 @@ from punc_cap import get_talk_id_order
 TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
 NOT_TRANSCRIPT_PATTERN = re.compile(r"[^a-z ']")
 SPACE_DEDUP = re.compile(r' +')
-SOUNDS_DESCR = re.compile(r'^\([^)]+\)$')  # (Applause) (Laughter) (Silence):
+SOUNDS_DESCR = re.compile(r'^\([^)]+\)( \([^)]+\))*$')  # (Applause) (Laughter) (Silence):
 
 
 def get_args():
