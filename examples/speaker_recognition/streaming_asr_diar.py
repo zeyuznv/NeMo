@@ -515,9 +515,6 @@ class FrameASR:
     def _online_diarization(self, audio_signal, segment_ranges):
         # audio_signal, audio_signal_lens = self._get_online_diar_segments()
         audio_signal, audio_signal_lens = self._convert_to_torch_var(audio_signal)
-        # segment_lengths = audio_signal_lens[:, 1] - audio_signal_lens[:, 0]
-
-        # sig, lens = self._get_online_diar_segments()
         try:
             _, embs = self.osd_model._speaker_model.forward(input_signal=audio_signal, input_signal_length=audio_signal_lens)
         except:
@@ -544,7 +541,6 @@ class FrameASR:
         # if self.out_rttm_dir:
             # labels_to_rttmfile(labels, uniq_key, self.out_rttm_dir)
         hypothesis = labels_to_pyannote_object(labels)
-        # print(labels)
         ipdb.set_trace()
         curr_speaker = -1
         return curr_speaker
