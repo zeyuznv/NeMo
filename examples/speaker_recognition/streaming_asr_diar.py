@@ -616,7 +616,6 @@ class FrameASR:
 
     def _decode(self, frame, offset=0):
         assert len(frame)==self.n_frame_len
-
         self.buffer[:-self.n_frame_len] = self.buffer[self.n_frame_len:]
         self.buffer[-self.n_frame_len:] = frame
        
