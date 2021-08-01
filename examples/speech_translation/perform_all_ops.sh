@@ -1,3 +1,4 @@
+set -e
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 
 printf "Creating IWSLT manifest.."
@@ -40,3 +41,4 @@ bash prepare_translations_and_references_for_mwer_scoring.sh
 printf "\nScoring translations.."
 bash score_translations.sh
 
+set +e
