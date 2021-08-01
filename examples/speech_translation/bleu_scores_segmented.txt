@@ -1,0 +1,38 @@
+long_segments
+    wmt21_en_de_backtranslated_24x6_averaged.nemo
+         CitriNet-1024-8x-Stride-Gamma-0.25.nemo.txt 21.4035
+         Citrinet-1024-SPE-Unigram-1024-Jarvis-ASRSet-2.0_no_weight_decay_e250-averaged.nemo.txt 22.0956
+         QuartzNet15x5Base-En.txt 18.2199
+         sel_jarvisasrset_d512_adamwlr2_wd0_aug10x0.05_sp128_500e-last.nemo.txt 22.0306
+         stt_en_citrinet_1024_gamma_0_25.txt 20.1187
+         stt_en_citrinet_1024.txt 20.0580
+         stt_en_citrinet_256_gamma_0_25.txt 18.8568
+         stt_en_citrinet_256.txt 18.3530
+         stt_en_citrinet_512_gamma_0_25.txt 19.6471
+         stt_en_citrinet_512.txt 18.9752
+         stt_en_conformer_ctc_large_ls.txt 18.1662
+         stt_en_conformer_ctc_large.txt 21.0948
+         stt_en_conformer_ctc_medium_ls.txt 17.4813
+         stt_en_conformer_ctc_medium.txt 20.4017
+         stt_en_conformer_ctc_small_ls.txt 16.9220
+         stt_en_conformer_ctc_small.txt 19.4735
+         stt_en_jasper10x5dr.txt 18.7654
+one_sentence_segments
+    wmt21_en_de_backtranslated_24x6_averaged.nemo
+         CitriNet-1024-8x-Stride-Gamma-0.25.nemo.txt 22.4772
+         Citrinet-1024-SPE-Unigram-1024-Jarvis-ASRSet-2.0_no_weight_decay_e250-averaged.nemo.txt 23.2690
+         QuartzNet15x5Base-En.txt 19.2387
+         sel_jarvisasrset_d512_adamwlr2_wd0_aug10x0.05_sp128_500e-last.nemo.txt 23.2540
+         stt_en_citrinet_1024_gamma_0_25.txt 21.2977
+         stt_en_citrinet_1024.txt 21.0754
+         stt_en_citrinet_256_gamma_0_25.txt 20.0989
+         stt_en_citrinet_256.txt 19.6903
+         stt_en_citrinet_512_gamma_0_25.txt 20.8827
+         stt_en_citrinet_512.txt 19.9774
+         stt_en_conformer_ctc_large_ls.txt 19.3330
+         stt_en_conformer_ctc_large.txt 22.3044
+         stt_en_conformer_ctc_medium_ls.txt 18.4662
+         stt_en_conformer_ctc_medium.txt 21.5122
+         stt_en_conformer_ctc_small_ls.txt 18.0031
+         stt_en_conformer_ctc_small.txt 20.7608
+         stt_en_jasper10x5dr.txt 20.0937

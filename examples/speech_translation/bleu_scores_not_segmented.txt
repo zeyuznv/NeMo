@@ -1,0 +1,24 @@
+long_segments
+    wmt21_en_de_backtranslated_24x6_averaged.nemo
+         CitriNet-1024-8x-Stride-Gamma-0.25.nemo.txt 22.4008
+         Citrinet-1024-SPE-Unigram-1024-Jarvis-ASRSet-2.0_no_weight_decay_e250-averaged.nemo.txt 22.7290
+         QuartzNet15x5Base-En.txt 20.1551
+         stt_en_citrinet_1024_gamma_0_25.txt 21.4113
+         stt_en_citrinet_1024.txt 21.5323
+         stt_en_citrinet_256_gamma_0_25.txt 20.4236
+         stt_en_citrinet_256.txt 20.2639
+         stt_en_citrinet_512_gamma_0_25.txt 20.8357
+         stt_en_citrinet_512.txt 20.8672
+         stt_en_jasper10x5dr.txt 20.3946
+one_sentence_segments
+    wmt21_en_de_backtranslated_24x6_averaged.nemo
+         CitriNet-1024-8x-Stride-Gamma-0.25.nemo.txt 23.5627
+         Citrinet-1024-SPE-Unigram-1024-Jarvis-ASRSet-2.0_no_weight_decay_e250-averaged.nemo.txt 24.0441
+         QuartzNet15x5Base-En.txt 21.2416
+         stt_en_citrinet_1024_gamma_0_25.txt 22.0558
+         stt_en_citrinet_1024.txt 22.3963
+         stt_en_citrinet_256_gamma_0_25.txt 21.4243
+         stt_en_citrinet_256.txt 21.4582
+         stt_en_citrinet_512_gamma_0_25.txt 21.6680
+         stt_en_citrinet_512.txt 21.9422
+         stt_en_jasper10x5dr.txt 21.5726
