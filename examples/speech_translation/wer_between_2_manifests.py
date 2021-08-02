@@ -80,7 +80,7 @@ def main():
         wer_by_talkid["all"] = wer
         args.output.parent.mkdir(exist_ok=True, parents=True)
         with args.output.open('w') as f:
-            json.dump(wer_by_talkid, f)
+            json.dump(wer_by_talkid, f, indent=2)
 
 
 if __name__ == "__main__":
