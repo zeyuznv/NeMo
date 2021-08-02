@@ -24,5 +24,5 @@ for tr in "${translations[@]}"; do
     done
   done
 done
-conda deactivate mwerSegmenter
+conda deactivate
 set +e

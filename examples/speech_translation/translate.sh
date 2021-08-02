@@ -1,4 +1,4 @@
-set -e -x
+set -e
 
 transcript_models_not_only_segmented_data=(
   QuartzNet15x5Base-En
@@ -81,4 +81,4 @@ for i in {0..1}; do
   fi
 done
 
-set +e +x
+set +e

@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-set -e -x
+set -e
 
 pretrained_ngc_not_only_segmented_data=(
   QuartzNet15x5Base-En
@@ -85,4 +85,4 @@ for pretrained_name in "${pretrained_ngc_not_only_segmented_data[@]}"; do
     batch_size=1
 done
 
-set +e +x
+set +e

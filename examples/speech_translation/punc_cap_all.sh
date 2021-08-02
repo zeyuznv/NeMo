@@ -1,4 +1,4 @@
-set -e -x
+set -e
 
 pretrained_ngc_not_only_segmented_data=(
   QuartzNet15x5Base-En
@@ -43,4 +43,4 @@ for m in "${pretrained_ngc_not_only_segmented_data[@]}"; do
     -o "${punc_unsegmented_transcripts_dir}/${m}.txt"
 done
 
-set +e +x
+set +e

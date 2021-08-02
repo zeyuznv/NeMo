@@ -1,4 +1,4 @@
-set -e -x
+set -e
 
 
 work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
@@ -38,4 +38,4 @@ for i in {0..3}; do
   fi
 done
 
-set +e +x
+set +e

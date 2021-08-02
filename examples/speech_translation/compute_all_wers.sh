@@ -1,4 +1,4 @@
-set -e -x
+set -e
 output_segmented=wer_scores_segmented.txt
 output_not_segmented=wer_scores_not_segmented.txt
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
@@ -23,4 +23,4 @@ for f in "${pred_dir_not_segmented}"/*; do
     echo "${model_name} ${wer}" | tee -a "${output_not_segmented}"
   fi
 done
-set +e +x
+set +e
