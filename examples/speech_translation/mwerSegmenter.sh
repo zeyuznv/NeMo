@@ -1,3 +1,5 @@
+set -e
+conda activate mwerSegmenter
 cd ~/mwerSegmenter/
 
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
@@ -22,3 +24,5 @@ for tr in "${translations[@]}"; do
     done
   done
 done
+conda deactivate mwerSegmenter
+set +e
