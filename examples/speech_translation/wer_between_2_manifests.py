@@ -53,6 +53,7 @@ def get_wer_by_talkid(hyps, refs):
     for k, v in hyps.items():
         talkid = extract_talkid(k)
         result[talkid] = word_error_rate([v], [refs[k]])
+    result = dict(sorted(result.items(), key=lambda x: -x[1]))
     return result
 
 
