@@ -52,7 +52,7 @@ def get_wer_by_talkid(hyps, refs):
     result = {}
     for k, v in hyps.items():
         talkid = extract_talkid(k)
-        result[talkid] = word_error_rate([v], [refs[talkid]])
+        result[talkid] = word_error_rate([v], [refs[k]])
     return result
 
 
