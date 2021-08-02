@@ -12,8 +12,8 @@ for f in "${pred_dir_segmented}"/*; do
   if [ "${f: -9}" == ".manifest" ]; then
     fn="$(basename "${f}")"
     model_name="${fn%.*}"
-    wer="$(python wer_between_2_manifests.py "${f}" "${ground_truth}")" \
-      -o "${wer_by_transcript_and_audio}/segmented/${model_name}.json"
+    wer="$(python wer_between_2_manifests.py "${f}" "${ground_truth}" \
+      -o "${wer_by_transcript_and_audio}/segmented/${model_name}.json")"
     echo "${model_name} ${wer}" | tee -a "${output_segmented}"
   fi
 done
@@ -21,8 +21,8 @@ for f in "${pred_dir_not_segmented}"/*; do
   if [ "${f: -9}" == ".manifest" ]; then
     fn="$(basename "${f}")"
     model_name="${fn%.*}"
-    wer="$(python wer_between_2_manifests.py "${f}" "${ground_truth}")" \
-      -o "${wer_by_transcript_and_audio}/not_segmented/${model_name}.json"
+    wer="$(python wer_between_2_manifests.py "${f}" "${ground_truth}" \
+      -o "${wer_by_transcript_and_audio}/not_segmented/${model_name}.json")"
     echo "${model_name} ${wer}" | tee -a "${output_not_segmented}"
   fi
 done
