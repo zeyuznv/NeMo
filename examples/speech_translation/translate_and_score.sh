@@ -1,9 +1,9 @@
 set -e
 
-dataset_dir="$1"
+dataset_dir="$(realpath "$1")"
 asr_model="$2"  # Path to checkpoint or NGC pretrained name
 translation_model="$3"
-output_dir="$4"
+output_dir="$(realpath "$4")"
 segmented="$5"  # 1 or 0
 mwerSegmenter="$6"  # 1 or 0
 
