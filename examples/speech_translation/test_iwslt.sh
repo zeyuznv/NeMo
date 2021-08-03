@@ -25,14 +25,14 @@ translation_model_name=$(basename "${translation_model}")
 en_ground_truth_manifest="${output_dir}/en_ground_truth_manifest.json"
 
 
-if [ "${asr_model: -5}" -eq ".nemo" ]; then
+if [ "${asr_model: -5}" = ".nemo" ]; then
   asr_model_argument_name=model_path
 else
   asr_model_argument_name=pretrained_name
 fi
 
 
-if [ "${translation_model: -5}" -eq ".nemo" ]; then
+if [ "${translation_model: -5}" = ".nemo" ]; then
   translation_model_parameter="-p"
 else
   translation_model_parameter="-m"
