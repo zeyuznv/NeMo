@@ -121,11 +121,11 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
   conda activate mwerSegmenter  # python 2 conda environment
   cd ~/mwerSegmenter/
   if [ "${segmented}" -eq 1 ]; then
-    translation_dir_mwer_xml="${output_dir}/${mwer_translations_xml_segmented_input}"
-    translation_dir_mwer_txt="${output_dir}/${mwer_translations_txt_segmented_input}"
+    translation_dir_mwer_xml="${output_dir}/mwer_translations_xml_segmented_input"
+    translation_dir_mwer_txt="${output_dir}/mwer_translations_txt_segmented_input"
   else
-    translation_dir_mwer_xml="${output_dir}/${mwer_translations_xml_not_segmented_input}"
-    translation_dir_mwer_txt="${output_dir}/${mwer_translations_txt_not_segmented_input}"
+    translation_dir_mwer_xml="${output_dir}/mwer_translations_xml_not_segmented_input"
+    translation_dir_mwer_txt="${output_dir}/mwer_translations_txt_not_segmented_input"
   fi
   translated_mwer_xml="${translation_dir_mwer_xml}/${translation_model_name}/${asr_model_name}.xml"
   mkdir -p "$(dirname "${translated_mwer_xml}")"
