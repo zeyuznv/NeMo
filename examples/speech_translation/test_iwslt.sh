@@ -1,3 +1,13 @@
+<< 'MULTILINE-COMMENT'
+Usage example:
+bash test_iwslt.sh ~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019-2 \
+  stt_en_citrinet_1024 \
+  ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo \
+  ~/iwslt_2019_test_result \
+  0 \
+  1
+MULTILINE-COMMENT
+
 set -e
 
 dataset_dir="$(realpath "$1")"
