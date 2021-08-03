@@ -1,6 +1,6 @@
 << 'MULTILINE-COMMENT'
 Usage example:
-bash test_iwslt.sh ~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019-2 \
+source test_iwslt.sh ~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019-2 \
   stt_en_citrinet_1024 \
   ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo \
   ~/iwslt_2019_test_result \
@@ -130,7 +130,7 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
   translated_mwer_xml="${translation_dir_mwer_xml}/${translation_model_name}/${asr_model_name}.xml"
   mkdir -p "$(dirname "${translated_mwer_xml}")"
   translated_text_for_scoring="${translation_dir_mwer_txt}/${translation_model_name}/${asr_model_name}.txt"
-  ./segmentBasedOnMWER.sh "${workdir}/IWSLT.TED.tst2019.en-de.en.xml" \
+  ./segmentBasedOnMWER.sh "${dataset_dir}/IWSLT.TED.tst2019.en-de.en.xml" \
     "${dataset_dir}/IWSLT.TED.tst2019.en-de.de.xml" \
     "${translated_text}" \
     "${asr_model_name}" \
