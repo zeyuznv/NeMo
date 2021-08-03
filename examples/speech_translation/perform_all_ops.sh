@@ -14,16 +14,16 @@ python iwslt_split_audio.py -a "${workdir}/wavs" \
   -d "${workdir}/split"
 
 printf "\nTranscription.."
-bash transcribe_with_different_models.sh
+workdir="${workdir}" bash transcribe_with_different_models.sh
 
 printf "\nComputing WER.."
-bash compute_all_wers.sh
+workdir="${workdir}" bash compute_all_wers.sh
 
 printf "\nPunctuation and capitalization.."
-bash punc_cap_all.sh
+workdir="${workdir}" bash punc_cap_all.sh
 
 printf "\nTranslation.."
-bash translate.sh
+workdir="${workdir}" bash translate.sh
 
 #printf "\nRemoving sound segments.."
 #python remove_sound_segments.py -s "${workdir}/IWSLT.TED.tst2019.en-de.en.xml" \
@@ -32,15 +32,15 @@ bash translate.sh
 #  -T "${workdir}/IWSLT.TED.tst2019.en-de.de.no_sounds.xml"
 
 printf "\nCreating de ground truth.."
-bash create_de_ground_truth.sh
+workdir="${workdir}" bash create_de_ground_truth.sh
 
 printf "\nmwerSegmenting.."
-bash mwerSegmenter.sh
+workdir="${workdir}" bash mwerSegmenter.sh
 
 printf "\nPreparing mwer segments for BLEU scoring.."
-bash prepare_translations_and_references_for_mwer_scoring.sh
+workdir="${workdir}" bash prepare_translations_and_references_for_mwer_scoring.sh
 
 printf "\nScoring translations.."
-bash score_translations.sh
+workdir="${workdir}" bash score_translations.sh
 
 set +e
