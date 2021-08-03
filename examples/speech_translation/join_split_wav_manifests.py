@@ -30,8 +30,10 @@ def get_args():
         raise ValueError(
             "Exactly one of parameters `--split-manifests-from-several-model` and `--split-manifests-from-one-model` "
             "has to be provided")
-    args.split_manifests_from_several_models = args.split_manifests_from_several_models.expanduser()
-    args.split_manifests_from_one_model = args.split_manifests_from_one_model.expanduser()
+    if args.split_manifests_from_several_models is not None:
+        args.split_manifests_from_several_models = args.split_manifests_from_several_models.expanduser()
+    if args.split_manifests_from_one_model is not None:
+        args.split_manifests_from_one_model = args.split_manifests_from_one_model.expanduser()
     args.output = args.output.expanduser()
     args.not_split_wav_dir = args.not_split_wav_dir.expanduser()
     return args
