@@ -4,108 +4,149 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 
+MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+]
+
+
 NUMBERS = {
-  "zero": 0,
-  "one": 1,
-  "two": 2,
-  "three": 3,
-  "four": 4,
-  "five": 5,
-  "six": 6,
-  "seven": 7,
-  "eight": 8,
-  "nine": 9,
-  "ten": 10,
-  "eleven": 11,
-  "twelve": 12,
-  "thirteen": 13,
-  "fourteen": 14,
-  "fifteen": 15,
-  "sixteen": 16,
-  "seventeen": 17,
-  "eighteen": 18,
-  "nineteen": 19,
-  "twenty": 20,
-  "twenty one": 21,
-  "twenty two": 22,
-  "twenty three": 23,
-  "twenty four": 24,
-  "twenty five": 25,
-  "twenty six": 26,
-  "twenty seven": 27,
-  "twenty eight": 28,
-  "twenty nine": 29,
-  "thirty": 30,
-  "thirty one": 31,
-  "thirty two": 32,
-  "thirty three": 33,
-  "thirty four": 34,
-  "thirty five": 35,
-  "thirty six": 36,
-  "thirty seven": 37,
-  "thirty eight": 38,
-  "thirty nine": 39,
-  "forty": 40,
-  "forty one": 41,
-  "forty two": 42,
-  "forty three": 43,
-  "forty four": 44,
-  "forty five": 45,
-  "forty six": 46,
-  "forty seven": 47,
-  "forty eight": 48,
-  "forty nine": 49,
-  "fifty": 50,
-  "fifty one": 51,
-  "fifty two": 52,
-  "fifty three": 53,
-  "fifty four": 54,
-  "fifty five": 55,
-  "fifty six": 56,
-  "fifty seven": 57,
-  "fifty eight": 58,
-  "fifty nine": 59,
-  "sixty": 60,
-  "sixty one": 61,
-  "sixty two": 62,
-  "sixty three": 63,
-  "sixty four": 64,
-  "sixty five": 65,
-  "sixty six": 66,
-  "sixty seven": 67,
-  "sixty eight": 68,
-  "sixty nine": 69,
-  "seventy": 70,
-  "seventy one": 71,
-  "seventy two": 72,
-  "seventy three": 73,
-  "seventy four": 74,
-  "seventy five": 75,
-  "seventy six": 76,
-  "seventy seven": 77,
-  "seventy eight": 78,
-  "seventy nine": 79,
-  "eighty": 80,
-  "eighty one": 81,
-  "eighty two": 82,
-  "eighty three": 83,
-  "eighty four": 84,
-  "eighty five": 85,
-  "eighty six": 86,
-  "eighty seven": 87,
-  "eighty eight": 88,
-  "eighty nine": 89,
-  "ninety": 90,
-  "ninety one": 91,
-  "ninety two": 92,
-  "ninety three": 93,
-  "ninety four": 94,
-  "ninety five": 95,
-  "ninety six": 96,
-  "ninety seven": 97,
-  "ninety eight": 98,
-  "ninety nine": 99
+  "zero": "0",
+  "one": "1",
+  "two": "2",
+  "three": "3",
+  "four": "4",
+  "five": "5",
+  "six": "6",
+  "seven": "7",
+  "eight": "8",
+  "nine": "9",
+  "ten": "10",
+  "eleven": "11",
+  "twelve": "12",
+  "thirteen": "13",
+  "fourteen": "14",
+  "fifteen": "15",
+  "sixteen": "16",
+  "seventeen": "17",
+  "eighteen": "18",
+  "nineteen": "19",
+  "twenty": "20",
+  "twenty one": "21",
+  "twenty two": "22",
+  "twenty three": "23",
+  "twenty four": "24",
+  "twenty five": "25",
+  "twenty six": "26",
+  "twenty seven": "27",
+  "twenty eight": "28",
+  "twenty nine": "29",
+  "thirty": "30",
+  "thirty one": "31",
+  "thirty two": "32",
+  "thirty three": "33",
+  "thirty four": "34",
+  "thirty five": "35",
+  "thirty six": "36",
+  "thirty seven": "37",
+  "thirty eight": "38",
+  "thirty nine": "39",
+  "forty": "40",
+  "forty one": "41",
+  "forty two": "42",
+  "forty three": "43",
+  "forty four": "44",
+  "forty five": "45",
+  "forty six": "46",
+  "forty seven": "47",
+  "forty eight": "48",
+  "forty nine": "49",
+  "fifty": "50",
+  "fifty one": "51",
+  "fifty two": "52",
+  "fifty three": "53",
+  "fifty four": "54",
+  "fifty five": "55",
+  "fifty six": "56",
+  "fifty seven": "57",
+  "fifty eight": "58",
+  "fifty nine": "59",
+  "sixty": "60",
+  "sixty one": "61",
+  "sixty two": "62",
+  "sixty three": "63",
+  "sixty four": "64",
+  "sixty five": "65",
+  "sixty six": "66",
+  "sixty seven": "67",
+  "sixty eight": "68",
+  "sixty nine": "69",
+  "seventy": "70",
+  "seventy one": "71",
+  "seventy two": "72",
+  "seventy three": "73",
+  "seventy four": "74",
+  "seventy five": "75",
+  "seventy six": "76",
+  "seventy seven": "77",
+  "seventy eight": "78",
+  "seventy nine": "79",
+  "eighty": "80",
+  "eighty one": "81",
+  "eighty two": "82",
+  "eighty three": "83",
+  "eighty four": "84",
+  "eighty five": "85",
+  "eighty six": "86",
+  "eighty seven": "87",
+  "eighty eight": "88",
+  "eighty nine": "89",
+  "ninety": "90",
+  "ninety one": "91",
+  "ninety two": "92",
+  "ninety three": "93",
+  "ninety four": "94",
+  "ninety five": "95",
+  "ninety six": "96",
+  "ninety seven": "97",
+  "ninety eight": "98",
+  "ninety nine": "99"
 }
+
+
+def add_ordinals_to_numbers():
+    for k, v in NUMBERS.items():
+        if k.endswith("one"):
+            NUMBERS[k[:-3] + "first"] = v + 'st'
+        elif k.endswith("two"):
+            NUMBERS[k[:-3] + "second"] = v + 'nd'
+        elif k.endswith("three"):
+            NUMBERS[k[:-5] + "third"] = v + "rd"
+        elif k.endswith("five"):
+            NUMBERS[k[:-4] + "fifth"] = v + "th"
+        elif k.endswith("eight"):
+            NUMBERS[k + 'h'] = v + 'th'
+        elif k.endswith("nine"):
+            NUMBERS[k[:-4] + "ninth"] = v + 'th'
+        elif k.endswith("twelve"):
+            NUMBERS[k[:-6] + "twelfth"] = v + 'th'
+        elif k.endswith("y"):
+            NUMBERS[k[:-1] + 'ieth'] = v + 'th'
+        else:
+            NUMBERS[k + 'th'] = v + 'th'
+
+
+add_ordinals_to_numbers()
 
 
 SINGLE_NUMBERS = {
@@ -123,12 +164,15 @@ SINGLE_NUMBERS = {
 
 
 def str_to_number_repl(match):
-    return str(NUMBERS[match.group(0)])
+    return NUMBERS[match.group(0)]
 
 
 def single_number_to_str_repl(match):
     return str(SINGLE_NUMBERS[match.group(0)])
 
+
+def single_ordinal_to_str_repl(match):
+    return match.group(0)[:-2]
 
 def hundred_repl(match_obj):
     second_term = 0 if match_obj.group(2) is None else int(match_obj.group(2))
@@ -149,6 +193,10 @@ def ten_power_3n_repl(match_obj):
     return str(result)
 
 
+def month_day_repl(match):
+    return match.group(1) + match.group(2)[:-2]
+
+
 REPLACEMENTS = [
     (re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(NUMBERS.keys())[::-1]])), str_to_number_repl),
     (re.compile(r"\b([1-9]) hundred( [0-9]{1,2})?\b"), hundred_repl),
@@ -165,7 +213,15 @@ REPLACEMENTS = [
     ),
     (re.compile(r"(?<![0-9] )\b([0-9]{1,2}) ([0-9]{1,2})\b(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
     (re.compile(r"\s+"), " "),
-    (re.compile(r"(?<![0-9])[0-9](?![0-9])"), single_number_to_str_repl)
+    (
+        re.compile(
+            f'({"|".join(MONTHS)})' + ' (' + "|".join([rf"\b{k}\b" for k in list(NUMBERS.values())[131:100:-1]]) + ')',
+            re.I
+        ),
+        month_day_repl,
+    ),
+    (re.compile(rf"(?<![0-9])\b{'|'.join(list(NUMBERS.keys())[100:110])}\b"), single_ordinal_to_str_repl),
+    (re.compile(r"(?<![0-9])[0-9](?![0-9])"), single_number_to_str_repl),
 ]
 
 
