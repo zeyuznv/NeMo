@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 
 TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
-NOT_TRANSCRIPT_PATTERN = re.compile(r"[^a-z ']")
+NOT_TRANSCRIPT_PATTERN = re.compile(r"[^a-z0-9 ']", flags=re.I)
 SPACE_DEDUP = re.compile(r' +')
 SOUNDS_DESCR = re.compile(r'^\([^)]+\)( \([^)]+\))*$')  # (Applause) (Laughter) (Silence):
 

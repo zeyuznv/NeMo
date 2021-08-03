@@ -33,16 +33,18 @@ nemo_asr_checkpoints_only_segmented_data=(
 
 checkpoint_dir=~/checkpoints
 workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+output_segmented_no_numbers="${workdir}/transcripts_segmented_input_no_numbers"
+output_not_segmented_no_numbers="${workdir}/transcripts_not_segmented_input_no_numbers"
 output_segmented="${workdir}/transcripts_segmented_input"
 output_not_segmented="${workdir}/transcripts_not_segmented_input"
 audio_dir="${workdir}/wavs"
-echo "Creating output directories '${output_segmented}' and '${output_not_segmented}'"
-mkdir -p "${output_segmented}" "${output_not_segmented}"
+echo "Creating output directories '${output_segmented}', '${output_not_segmented}', '${output_segmented_no_numbers}', '${output_not_segmented_no_numbers}'"
+mkdir -p "${output_segmented}" "${output_not_segmented}" "${output_segmented_no_numbers}" "${output_not_segmented_no_numbers}"
 
 for model_checkpoint in "${nemo_asr_checkpoints_not_only_segmented_data[@]}"; do
   python ~/NeMo/examples/asr/transcribe_speech.py model_path="${checkpoint_dir}/${model_checkpoint}" \
     audio_dir="${audio_dir}" \
-    output_filename="${output_not_segmented}/$(basename "${model_checkpoint}").manifest" \
+    output_filename="${output_not_segmented_no_numbers}/$(basename "${model_checkpoint}").manifest" \
     cuda=true \
     batch_size=1
 done
@@ -75,14 +77,26 @@ for pretrained_name in "${pretrained_ngc_only_segmented_data[@]}" "${pretrained_
     fi
   done
 done
-python join_split_wav_manifests.py -s "${split_transcripts}" -o "${output_segmented}" -n "${audio_dir}"
+python join_split_wav_manifests.py -s "${split_transcripts}" -o "${output_segmented_no_numbers}" -n "${audio_dir}"
 
 for pretrained_name in "${pretrained_ngc_not_only_segmented_data[@]}"; do
   python ~/NeMo/examples/asr/transcribe_speech.py pretrained_name="${pretrained_name}" \
     audio_dir="${audio_dir}" \
-    output_filename="${output_not_segmented}/${pretrained_name}.manifest" \
+    output_filename="${output_not_segmented_no_numbers}/${pretrained_name}.manifest" \
     cuda=true \
     batch_size=1
+done
+
+for inp_manifest_dir in "${output_segmented_no_numbers}" "${output_hnot_segmented_no_numbers}"; do
+  if [ "${inp_manifest_dir}" = "${output_segmented_no_numbers}"]; then
+    out_manifest_dir="${output_segmented}"
+  else
+    out_manifest_dir="${output_not_segmented}"
+  fi
+  for inp_manifest_path in "${inp_manifest_dir}"/*; do
+    out_manifest_file = "$(basename "${inp_manifest_path}")"
+    python text_to_numbers.py -i "${inp_manifest_path}" -o "${out_manifest_dir}/${out_manifest_file}"
+  done
 done
 
 set +e
