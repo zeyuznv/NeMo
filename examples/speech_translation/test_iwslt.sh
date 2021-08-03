@@ -112,7 +112,7 @@ fi
 translated_text="${translation_dir}/${translation_model_name}/${asr_model_name}.txt"
 python translate_iwslt.py "${translation_model_parameter}" "${translation_model}" \
   -i "${punc_dir}/${asr_model_name}.txt" \
-  -o "${translated_text}"
+  -o "${translated_text}" \
   -s
 
 
