@@ -51,7 +51,6 @@ if [ "${segmented}" -eq 1 ]; then
   python iwslt_split_audio.py -a "${dataset_dir}/wavs" \
     -s "${dataset_dir}/IWSLT.TED.tst2019.en-de.yaml" \
     -d "${split_data_path}"
-  fi
   split_transcripts="${dataset_dir}/split_transcripts/${asr_model_name}"
   transcript="${output_dir}/transcripts_segmented_input/${asr_model_name}.manifest"
   mkdir -p "${output_dir}/transcripts_segmented_input"
