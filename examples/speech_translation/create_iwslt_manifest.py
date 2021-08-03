@@ -98,6 +98,7 @@ def main():
             manifest += '\n'
         filepath = talk_id_to_wav_file[talk_id]
         manifest += json.dumps({"audio_filepath": str(filepath), "offset": 0.0, "duration": get_wav_duration(filepath), "text": text})
+    args.output.parent.mkdir(exist_ok=True, parents=True)
     with args.output.open('w') as f:
         f.write(manifest)
 

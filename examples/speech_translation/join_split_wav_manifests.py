@@ -10,12 +10,29 @@ SPACE_DEDUP = re.compile(r' +')
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--split-manifests", "-s", required=True, type=Path)
-    parser.add_argument("--output-dir", "-o", required=True, type=Path)
+    parser.add_argument(
+        "--split-manifests-from-several-models", "-s", required=False, type=Path, 
+        help="Path to directory which contains directories with split manifests created by different models")
+    parser.add_argument(
+        "--split-manifests-from-one-model", "-S", type=Path
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        required=True,
+        type=Path,
+        help="Path to directory with joined manifests if `--split-manifests-from-several-models` is provided "
+             "else if `--split-manifests-from-one-model` is provided this parameter is path to output manifest.")
     parser.add_argument("--not-split-wav-dir", "-n", required=True, type=Path)
     args = parser.parse_args()
-    args.split_manifests = args.split_manifests.expanduser()
-    args.output_dir = args.output_dir.expanduser()
+    if args.split_manifests_from_several_models is None and args.split_manifests_from_one_model is None \
+            or args.split_manifests_from_several_models is not None and args.split_manifests_from_one_model is not None:
+        raise ValueError(
+            "Exactly one of parameters `--split-manifests-from-several-model` and `--split-manifests-from-one-model` "
+            "has to be provided")
+    args.split_manifests_from_several_models = args.split_manifests_from_several_models.expanduser()
+    args.split_manifests_from_one_model = args.split_manifests_from_one_model.expanduser()
+    args.output = args.output.expanduser()
     args.not_split_wav_dir = args.not_split_wav_dir.expanduser()
     return args
 
@@ -60,9 +77,7 @@ def is_int(s):
         return False
 
 
-def join_manifests(dir_, output_dir, not_split_wav_dir):
-    last_name = dir_.parts[-1]
-    joined_name = output_dir / Path(last_name + '.manifest')
+def join_manifests(dir_, output_file, not_split_wav_dir):
     manifest = ""
     for elem in dir_.iterdir():
         if elem.is_file() and elem.suffix == ".manifest":
@@ -74,15 +89,21 @@ def join_manifests(dir_, output_dir, not_split_wav_dir):
             if joined_duration is not None:
                 m_s["duration"] = joined_duration
             manifest += json.dumps(m_s)
-    with joined_name.open('w') as f:
+    with output_file.open('w') as f:
         f.write(manifest)
 
 
 def main():
     args = get_args()
-    for elem in args.split_manifests.iterdir():
-        if elem.is_dir() and any([e.endswith('.manifest') for e in os.listdir(elem)]):
-            join_manifests(elem, args.output_dir, args.not_split_wav_dir)
+    if args.split_manifests_from_several_models is None:
+        args.output.parent.mkdir(exist_ok=True, parents=True)
+        join_manifests(args.split_manifests_from_one_model, args.output, args.not_split_wav_dir)
+    else:
+        args.output.mkdir(exist_ok=True, parents=True)
+        for elem in args.split_manifests_from_several_models.iterdir():
+            if elem.is_dir() and any([e.endswith('.manifest') for e in os.listdir(elem)]):
+                join_manifests(elem, args.output / Path(elem.parts[-1] + '.manifest'), args.not_split_wav_dir)
+
 
 
 if __name__ == "__main__":

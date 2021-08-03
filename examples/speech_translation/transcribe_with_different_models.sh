@@ -54,7 +54,7 @@ done
 split_data_path="${audio_dir}/../split"
 split_transcripts="${audio_dir}/../split_transcripts"
 for model_checkpoint in "${nemo_asr_checkpoints_not_only_segmented_data[@]}" "${nemo_asr_checkpoints_only_segmented_data}"; do
-  mkdir -p "${split_transcripts}/${model_checkpoint}"
+  mkdir -p "${split_transcripts}/$(basename "${model_checkpoint}")"
   for f in "${split_data_path}"/*; do
     talk_id=$(basename "${f}")
     if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
@@ -90,7 +90,7 @@ for pretrained_name in "${pretrained_ngc_not_only_segmented_data[@]}"; do
 done
 
 for inp_manifest_dir in "${output_segmented_no_numbers}" "${output_hnot_segmented_no_numbers}"; do
-  if [ "${inp_manifest_dir}" = "${output_segmented_no_numbers}"]; then
+  if [ "${inp_manifest_dir}" = "${output_segmented_no_numbers}" ]; then
     out_manifest_dir="${output_segmented}"
   else
     out_manifest_dir="${output_not_segmented}"
