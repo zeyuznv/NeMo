@@ -227,7 +227,7 @@ REPLACEMENTS = [
         month_day_repl,
     ),
     (re.compile(rf"(?<![0-9])\b{'|'.join(list(NUMBERS.keys())[100:110])}\b", flags=re.I), single_ordinal_to_str_repl),
-    (re.compile(r"(?<![0-9])[0-9](?![0-9])", flags=re.I), single_number_to_str_repl),
+    (re.compile(r"(?<![0-9])[0-9]\b", flags=re.I), single_number_to_str_repl),
 ]
 
 
