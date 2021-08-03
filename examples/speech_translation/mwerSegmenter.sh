@@ -2,7 +2,9 @@ set -e
 conda activate mwerSegmenter
 cd ~/mwerSegmenter/
 
-workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 translations=( translated_transcripts_segmented translated_transcripts_not_segmented )
 
 result_dir="${workdir}/mwerSegmented"

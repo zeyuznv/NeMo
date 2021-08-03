@@ -1,7 +1,9 @@
 set -e
 
 
-work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 references=(
   iwslt_de_text.txt
   iwslt_de_text.txt
@@ -17,8 +19,8 @@ translated_dirs=(
 outputs=( bleu_scores_segmented.txt bleu_scores_not_segmented.txt bleu_scores_segmented_mwer.txt bleu_scores_not_segmented_mwer.txt )
 
 for i in {0..3}; do
-  translated_dir="${work_dir}/${translated_dirs[i]}"
-  reference="${work_dir}/${references[i]}"
+  translated_dir="${workdir}/${translated_dirs[i]}"
+  reference="${workdir}/${references[i]}"
   output="${outputs[i]}"
   if [[ -d "${translated_dir}" && -f "${reference}" ]]; then
     > "${output}"

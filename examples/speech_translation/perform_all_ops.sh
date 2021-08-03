@@ -1,5 +1,7 @@
 set -e
-workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 
 printf "Creating IWSLT manifest.."
 python create_iwslt_manifest.py -a "${workdir}/wavs" \

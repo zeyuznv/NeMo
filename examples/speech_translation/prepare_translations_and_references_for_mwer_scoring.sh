@@ -1,5 +1,7 @@
 set -e
-workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 
 python xml_2_text_segs_2_lines.py -i "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
   -o "${workdir}/iwslt_de_text_by_segs.txt"

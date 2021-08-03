@@ -24,21 +24,23 @@ pretrained_ngc_only_segmented_data=(
 )
 
 
-work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 
-segmented_transcripts_dir="${work_dir}/transcripts_segmented_input"
-unsegmented_transcripts_dir="${work_dir}/transcripts_not_segmented_input"
+segmented_transcripts_dir="${workdir}/transcripts_segmented_input"
+unsegmented_transcripts_dir="${workdir}/transcripts_not_segmented_input"
 
-punc_segmented_transcripts_dir="${work_dir}/punc_transcripts_segmented_input"
-punc_unsegmented_transcripts_dir="${work_dir}/punc_transcripts_not_segmented_input"
+punc_segmented_transcripts_dir="${workdir}/punc_transcripts_segmented_input"
+punc_unsegmented_transcripts_dir="${workdir}/punc_transcripts_not_segmented_input"
 
 for m in "${pretrained_ngc_not_only_segmented_data[@]}" "${pretrained_ngc_only_segmented_data[@]}"; do
-  python punc_cap.py -a "${work_dir}/manifest.json" \
+  python punc_cap.py -a "${workdir}/manifest.json" \
     -p "${segmented_transcripts_dir}/${m}.manifest" \
     -o "${punc_segmented_transcripts_dir}/${m}.txt"
 done
 for m in "${pretrained_ngc_not_only_segmented_data[@]}"; do
-  python punc_cap.py -a "${work_dir}/manifest.json" \
+  python punc_cap.py -a "${workdir}/manifest.json" \
     -p "${unsegmented_transcripts_dir}/${m}.manifest" \
     -o "${punc_unsegmented_transcripts_dir}/${m}.txt"
 done

@@ -23,10 +23,12 @@ transcript_models_only_segmented_data=(
   sel_jarvisasrset_d512_adamwlr2_wd0_aug10x0.05_sp128_500e-last.nemo
 )
 
-work_dir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 translated_dirs=( translated_transcripts_segmented translated_transcripts_not_segmented )
 
-punc_transcripts=( "${work_dir}/punc_transcripts_segmented_input" "${work_dir}/punc_transcripts_not_segmented_input" )
+punc_transcripts=( "${workdir}/punc_transcripts_segmented_input" "${workdir}/punc_transcripts_not_segmented_input" )
 translation_checkpoints=( ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo )
 #translation_ngc_models=( nmt_en_de_transformer12x2 )
 declare -a translation_ngc_models
@@ -39,8 +41,8 @@ for i in {0..1}; do
   fi
   translated_dir="${translated_dirs[i]}"
   punc_transcripts_dir="${punc_transcripts[i]}"
-  long_segments_result="${work_dir}/${translated_dir}/long_segments"
-  one_sentence_segments_result="${work_dir}/${translated_dir}/one_sentence_segments"
+  long_segments_result="${workdir}/${translated_dir}/long_segments"
+  one_sentence_segments_result="${workdir}/${translated_dir}/one_sentence_segments"
   mkdir -p "${long_segments_result}"
   mkdir -p "${one_sentence_segments_result}"
   for ckpt in "${translation_checkpoints[@]}"; do

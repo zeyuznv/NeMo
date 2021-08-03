@@ -32,7 +32,9 @@ nemo_asr_checkpoints_only_segmented_data=(
 )
 
 checkpoint_dir=~/checkpoints
-workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 output_segmented_no_numbers="${workdir}/transcripts_segmented_input_no_numbers"
 output_not_segmented_no_numbers="${workdir}/transcripts_not_segmented_input_no_numbers"
 output_segmented="${workdir}/transcripts_segmented_input"

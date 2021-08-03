@@ -1,7 +1,9 @@
 set -e
 output_segmented=wer_scores_segmented.txt
 output_not_segmented=wer_scores_not_segmented.txt
-workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+if [ -z "${workdir}"]; then
+  workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
+fi
 pred_dir_segmented="${workdir}/transcripts_segmented_input"
 pred_dir_not_segmented="${workdir}/transcripts_not_segmented_input"
 wer_by_transcript_and_audio="${workdir}/wer_by_transcript_and_audio"
