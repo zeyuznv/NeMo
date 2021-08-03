@@ -181,11 +181,13 @@ def hundred_repl(match_obj):
 
 
 def ten_power_3n_repl(match_obj):
-    number_groups = [1, 6, 10, 13]
+    # number_groups = [1, 6, 10, 13]
+    number_groups = [1, 4]
     for i_ng, ng in enumerate(number_groups):
         if match_obj.group(ng) is not None:
             start = ng + 1
-            n = 4 - i_ng
+            # n = 4 - i_ng
+            n = 2 - i_ng
             break
     result = 0
     for i in range(start, start + n):
