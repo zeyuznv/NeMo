@@ -125,7 +125,7 @@ NUMBERS = {
 
 
 def add_ordinals_to_numbers():
-    for k, v in NUMBERS.items():
+    for k, v in NUMBERS.copy().items():
         if k.endswith("one"):
             NUMBERS[k[:-3] + "first"] = v + 'st'
         elif k.endswith("two"):
@@ -164,15 +164,16 @@ SINGLE_NUMBERS = {
 
 
 def str_to_number_repl(match):
-    return NUMBERS[match.group(0)]
+    return NUMBERS[match.group(0).lower()]
 
 
 def single_number_to_str_repl(match):
-    return str(SINGLE_NUMBERS[match.group(0)])
+    return SINGLE_NUMBERS[match.group(0).lower()]
 
 
 def single_ordinal_to_str_repl(match):
     return match.group(0)[:-2]
+
 
 def hundred_repl(match_obj):
     second_term = 0 if match_obj.group(2) is None else int(match_obj.group(2))
@@ -194,34 +195,37 @@ def ten_power_3n_repl(match_obj):
 
 
 def month_day_repl(match):
-    return match.group(1) + match.group(2)[:-2]
+    return match.group(1) + ' ' + match.group(2)[:-2]
 
 
 REPLACEMENTS = [
-    (re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(NUMBERS.keys())[::-1]])), str_to_number_repl),
-    (re.compile(r"\b([1-9]) hundred( [0-9]{1,2})?\b"), hundred_repl),
+    (
+        re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(NUMBERS.keys())[::-1]]), flags=re.I),
+        str_to_number_repl
+    ),
+    (re.compile(r"\b([1-9]) hundred( [0-9]{1,2})?", flags=re.I), hundred_repl),
     (
         re.compile(
-            r"(\b(?:([1-9][0-9]{0,2}) billion)(?:( [1-9][0-9]{0,2}) million)?(?:( [1-9][0-9]{0,2}) thousand)?"
-            r"( [1-9][0-9]{0,2})?\b)|"
-            r"(\b(?:([1-9][0-9]{0,2}) million)(?:( [1-9][0-9]{0,2}) thousand)?( [1-9][0-9]{0,2})?\b)|"
-            r"(\b(?:([1-9][0-9]{0,2}) thousand)( [1-9][0-9]{0,2})?\b)|"
-            r"(\b([1-9][0-9]{0,2})\b)",
+            # r"(\b(?:([1-9][0-9]{0,2}) billion)(?:( [1-9][0-9]{0,2}) million)?(?:( [1-9][0-9]{0,2}) thousand)?"
+            # r"( [1-9][0-9]{0,2})?)|"
+            # r"(\b(?:([1-9][0-9]{0,2}) million)(?:( [1-9][0-9]{0,2}) thousand)?( [1-9][0-9]{0,2})?)|"
+            r"(\b(?:([1-9][0-9]{0,2}) thousand)( [1-9][0-9]{0,2})?)|"
+            r"(\b([1-9][0-9]{0,2}))",
             flags=re.IGNORECASE,
         ),
         ten_power_3n_repl
     ),
-    (re.compile(r"(?<![0-9] )\b([0-9]{1,2}) ([0-9]{1,2})\b(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
-    (re.compile(r"\s+"), " "),
+    (re.compile(r"(?<![0-9] )\b([0-9]{1,2}) ([0-9]{1,2})(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
+    (re.compile(r"\s+", flags=re.I), " "),
     (
         re.compile(
             f'({"|".join(MONTHS)})' + ' (' + "|".join([rf"\b{k}\b" for k in list(NUMBERS.values())[131:100:-1]]) + ')',
-            re.I
+            flags=re.I
         ),
         month_day_repl,
     ),
-    (re.compile(rf"(?<![0-9])\b{'|'.join(list(NUMBERS.keys())[100:110])}\b"), single_ordinal_to_str_repl),
-    (re.compile(r"(?<![0-9])[0-9](?![0-9])"), single_number_to_str_repl),
+    (re.compile(rf"(?<![0-9])\b{'|'.join(list(NUMBERS.keys())[100:110])}\b", flags=re.I), single_ordinal_to_str_repl),
+    (re.compile(r"(?<![0-9])[0-9](?![0-9])", flags=re.I), single_number_to_str_repl),
 ]
 
 
