@@ -165,7 +165,7 @@ REPLACEMENTS = [
     ),
     (re.compile(r"(?<![0-9] )\b([0-9]{1,2}) ([0-9]{1,2})\b(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
     (re.compile(r"\s+"), " "),
-    (re.compile(r"[0-9]"), single_number_to_str_repl)
+    (re.compile(r"(?<![0-9])[0-9](?![0-9])"), single_number_to_str_repl)
 ]
 
 
