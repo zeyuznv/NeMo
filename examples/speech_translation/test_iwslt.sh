@@ -39,14 +39,14 @@ else
 fi
 
 
-printf "Creating IWSLT manifest.."
+printf "Creating IWSLT manifest..\n"
 python create_iwslt_manifest.py -a "${audio_dir}" \
   -t "${dataset_dir}/IWSLT.TED.tst2019.en-de.en.xml" \
   -o "${en_ground_truth_manifest}"
 
 
 if [ "${segmented}" -eq 1 ]; then
-  printf "\nSplitting audio files.."
+  printf "\n\nSplitting audio files..\n"
   split_data_path="${output_dir}/split"
   python iwslt_split_audio.py -a "${dataset_dir}/wavs" \
     -s "${dataset_dir}/IWSLT.TED.tst2019.en-de.yaml" \
@@ -80,7 +80,7 @@ else
 fi
 
 
-printf "\nComputing WER.."
+printf "\n\nComputing WER..\n"
 wer_by_transcript_and_audio="${output_dir}/wer_by_transcript_and_audio"
 if [ "${segmented}" -eq 1 ]; then
   wer_dir="segmented"
@@ -92,7 +92,7 @@ wer="$(python wer_between_2_manifests.py "${transcript}" "${en_ground_truth_mani
 echo "WER: ${wer}"
 
 
-printf "\nAdding punctuation and restoring capitalization.."
+printf "\n\nAdding punctuation and restoring capitalization..\n"
 if [ "${segmented}" -eq 1 ]; then
   punc_dir="${output_dir}/punc_transcripts_segmented_input"
 else
@@ -103,7 +103,7 @@ python punc_cap.py -a "${en_ground_truth_manifest}" \
   -o "${punc_dir}/${asr_model_name}.txt"
 
 
-printf "\nTranslating.."
+printf "\n\nTranslating..\n"
 if [ "${segmented}" -eq 1 ]; then
   translation_dir="${output_dir}/${translations_segmented_input}"
 else
@@ -117,7 +117,7 @@ python translate_iwslt.py "${translation_model_parameter}" "${translation_model}
 
 
 if [ "${mwerSegmenter}" -eq 1 ]; then
-  printf "\nSegmenting translations using mwerSegmenter.."
+  printf "\n\nSegmenting translations using mwerSegmenter..\n"
   conda activate mwerSegmenter  # python 2 conda environment
   cd ~/mwerSegmenter/
   if [ "${segmented}" -eq 1 ]; then
@@ -157,7 +157,7 @@ else
 fi
 
 
-printf "\nComputing BLEU.."
+printf "\n\nComputing BLEU..\n"
 bleu=$(sacrebleu "${reference}" -i "${translated_text_for_scoring}" -m bleu -b -w 4)
 echo "BLEU: ${bleu}"
 output_file="${output_dir}/BLEU.txt"

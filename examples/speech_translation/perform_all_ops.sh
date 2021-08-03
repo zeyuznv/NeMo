@@ -8,21 +8,21 @@ python create_iwslt_manifest.py -a "${workdir}/wavs" \
   -t "${workdir}/IWSLT.TED.tst2019.en-de.en.xml" \
   -o "${workdir}/manifest.json"
 
-printf "\nSplitting audio files.."
+printf "\n\nSplitting audio files..\n"
 python iwslt_split_audio.py -a "${workdir}/wavs" \
   -s "${workdir}/IWSLT.TED.tst2019.en-de.yaml" \
   -d "${workdir}/split"
 
-printf "\nTranscription.."
+printf "\n\nTranscription..\n"
 workdir="${workdir}" bash transcribe_with_different_models.sh
 
-printf "\nComputing WER.."
+printf "\n\nComputing WER..\n"
 workdir="${workdir}" bash compute_all_wers.sh
 
-printf "\nPunctuation and capitalization.."
+printf "\n\nPunctuation and capitalization..\n"
 workdir="${workdir}" bash punc_cap_all.sh
 
-printf "\nTranslation.."
+printf "\n\nTranslation..\n"
 workdir="${workdir}" bash translate.sh
 
 #printf "\nRemoving sound segments.."
@@ -31,16 +31,16 @@ workdir="${workdir}" bash translate.sh
 #  -S "${workdir}/IWSLT.TED.tst2019.en-de.en.no_sounds.xml" \
 #  -T "${workdir}/IWSLT.TED.tst2019.en-de.de.no_sounds.xml"
 
-printf "\nCreating de ground truth.."
+printf "\n\nCreating de ground truth..\n"
 workdir="${workdir}" bash create_de_ground_truth.sh
 
-printf "\nmwerSegmenting.."
+printf "\n\nmwerSegmenting..\n"
 workdir="${workdir}" bash mwerSegmenter.sh
 
-printf "\nPreparing mwer segments for BLEU scoring.."
+printf "\n\nPreparing mwer segments for BLEU scoring..\n"
 workdir="${workdir}" bash prepare_translations_and_references_for_mwer_scoring.sh
 
-printf "\nScoring translations.."
+printf "\n\nScoring translations..\n"
 workdir="${workdir}" bash score_translations.sh
 
 set +e
