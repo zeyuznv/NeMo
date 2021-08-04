@@ -1,4 +1,7 @@
 << 'MULTILINE-COMMENT'
+Before running this script you have to create conda Python 2 environment 'mwerSegmenter'. Otherwise mwerSegmenter
+will not start.
+
 Parameters of the script are
   dataset_dir: path to directory with year dataset. Obtained when archive IWSLT-SLT.tst2019.en-de.tgz is unpacked
   asr_model: pretrained NGC name or path to NeMo ASR checkpoint
@@ -94,7 +97,7 @@ else
   transcript="${output_dir}/transcripts_not_segmented_input/${asr_model_name}.manifest"
 fi
 mkdir -p "$(dirname "${transcript}")"
-python text_to_numbers.py -i "${inp_manifest_path}" -o "${transcript}"
+python text_to_numbers.py -i "${transcript_no_numbers}" -o "${transcript}"
 
 
 printf "\n\nComputing WER..\n"
