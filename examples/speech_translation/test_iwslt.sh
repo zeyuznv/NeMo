@@ -4,6 +4,8 @@ will not start.
 
 The script does not stop if an error occurs so you have to watch logs.
 
+The script has to be run from directory NeMo/examples/speech_translation
+
 Parameters of the script are
   dataset_dir: path to directory with year dataset. Obtained when archive IWSLT-SLT.tst2019.en-de.tgz is unpacked
   asr_model: pretrained NGC name or path to NeMo ASR checkpoint
