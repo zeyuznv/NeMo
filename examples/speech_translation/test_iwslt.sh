@@ -127,9 +127,9 @@ python punc_cap.py -a "${en_ground_truth_manifest}" \
 
 printf "\n\nTranslating..\n"
 if [ "${segmented}" -eq 1 ]; then
-  translation_dir="${output_dir}/${translations_segmented_input}"
+  translation_dir="${output_dir}/translations_segmented_input"
 else
-  translation_dir="${output_dir}/${translations_not_segmented_input}"
+  translation_dir="${output_dir}/translations_not_segmented_input"
 fi
 translated_text="${translation_dir}/${translation_model_name}/${asr_model_name}.txt"
 python translate_iwslt.py "${translation_model_parameter}" "${translation_model}" \
@@ -174,7 +174,8 @@ else
   reference="${output_dir}/iwslt_de_text_by_wavs.txt"
   python prepare_iwslt_text_for_translation.py -a "${en_ground_truth_manifest}" \
     -t "${dataset_dir}/IWSLT.TED.tst2019.en-de.de.xml" \
-    -o "${reference}"
+    -o "${reference}" \
+    -j
 fi
 
 
