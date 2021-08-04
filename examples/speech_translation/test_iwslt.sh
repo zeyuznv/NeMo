@@ -94,7 +94,7 @@ else
   transcript="${output_dir}/transcripts_not_segmented_input/${asr_model_name}.manifest"
 fi
 mkdir -p "$(dirname "${transcript}")"
-python text_to_numbers.py -i "${inp_manifest_path}" -o "${out_manifest_dir}/$(basename "${inp_manifest_path}")"
+python text_to_numbers.py -i "${inp_manifest_path}" -o "${transcript}"
 
 
 printf "\n\nComputing WER..\n"
