@@ -89,7 +89,7 @@ for pretrained_name in "${pretrained_ngc_not_only_segmented_data[@]}"; do
     batch_size=1
 done
 
-for inp_manifest_dir in "${output_segmented_no_numbers}" "${output_hnot_segmented_no_numbers}"; do
+for inp_manifest_dir in "${output_segmented_no_numbers}" "${output_not_segmented_no_numbers}"; do
   if [ "${inp_manifest_dir}" = "${output_segmented_no_numbers}" ]; then
     out_manifest_dir="${output_segmented}"
   else
