@@ -2,6 +2,8 @@
 Before running this script you have to create conda Python 2 environment 'mwerSegmenter'. Otherwise mwerSegmenter
 will not start.
 
+The script does not stop if an error occurs so you have to watch logs.
+
 Parameters of the script are
   dataset_dir: path to directory with year dataset. Obtained when archive IWSLT-SLT.tst2019.en-de.tgz is unpacked
   asr_model: pretrained NGC name or path to NeMo ASR checkpoint
@@ -179,7 +181,12 @@ fi
 printf "\n\nComputing BLEU..\n"
 bleu=$(sacrebleu "${reference}" -i "${translated_text_for_scoring}" -m bleu -b -w 4)
 echo "BLEU: ${bleu}"
-output_file="${output_dir}/BLEU.txt"
+if [ "${segmented}" -eq 1 ]; then
+  output_file="${output_dir}/BLEU_segmented_input/${translation_model_name}/${asr_model_name}.txt"
+else
+  output_file="${output_dir}/BLEU_not_segmented_input/${translation_model_name}/${asr_model_name}.txt"
+fi
+mkdir -p "$(dirname "${output_file}")"
 echo "" >> "${output_file}"
 echo "ASR model: ${asr_model}" >> "${output_file}"
 echo "NMT model: ${translation_model}" >> "${output_file}"
