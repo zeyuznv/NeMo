@@ -96,8 +96,7 @@ for inp_manifest_dir in "${output_segmented_no_numbers}" "${output_hnot_segmente
     out_manifest_dir="${output_not_segmented}"
   fi
   for inp_manifest_path in "${inp_manifest_dir}"/*; do
-    out_manifest_file = "$(basename "${inp_manifest_path}")"
-    python text_to_numbers.py -i "${inp_manifest_path}" -o "${out_manifest_dir}/${out_manifest_file}"
+    python text_to_numbers.py -i "${inp_manifest_path}" -o "${out_manifest_dir}/$(basename "${inp_manifest_path}")"
   done
 done
 
