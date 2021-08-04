@@ -1,4 +1,13 @@
 << 'MULTILINE-COMMENT'
+Parameters of the script are
+  dataset_dir: path to directory with year dataset. Obtained when archive IWSLT-SLT.tst2019.en-de.tgz is unpacked
+  asr_model: pretrained NGC name or path to NeMo ASR checkpoint
+  translation_model: pretrained NGC name or path to NeMo NMT checkpoint
+  output_dir: path to directory where results will be stored
+  segmented: whether segment input audio before transcription using markup provided in dataset. 1 - segment,
+    0 - do not segment
+  mwerSegmenter: whether use mwerSegmenter for BLEU calculation. 1 - use mwerSegmenter, 0 - do not use
+
 Usage example:
 source test_iwslt.sh ~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019-2 \
   stt_en_citrinet_1024 \
@@ -52,8 +61,8 @@ if [ "${segmented}" -eq 1 ]; then
     -s "${dataset_dir}/IWSLT.TED.tst2019.en-de.yaml" \
     -d "${split_data_path}"
   split_transcripts="${dataset_dir}/split_transcripts/${asr_model_name}"
-  transcript="${output_dir}/transcripts_segmented_input/${asr_model_name}.manifest"
-  mkdir -p "${output_dir}/transcripts_segmented_input"
+  transcript_no_numbers="${output_dir}/transcripts_segmented_input_no_numbers/${asr_model_name}.manifest"
+  mkdir -p "$(dirname "${transcript_no_numbers}")"
   for f in "${split_data_path}"/*; do
     talk_id=$(basename "${f}")
     if [[ "${talk_id}" =~ ^[1-9][0-9]*$ ]]; then
@@ -64,20 +73,30 @@ if [ "${segmented}" -eq 1 ]; then
         batch_size=4
     fi
   done
-  python join_split_wav_manifests.py -S "${split_transcripts}" -o "${transcript}" -n "${audio_dir}"
+  python join_split_wav_manifests.py -S "${split_transcripts}" -o "${transcript_no_numbers}" -n "${audio_dir}"
 else
   if [ "${segmented}" -ne 0 ]; then
     echo "Wrong value '${segmented}' of fifth parameter of 'translate_and_score.sh'. Only '0' and '1' are supported."
     exit 1
   fi
-  transcript="${output_dir}/transcripts_not_segmented_input/${asr_model_name}.manifest"
-  mkdir -p "${output_dir}/transcripts_not_segmented_input"
+  transcript_no_numbers="${output_dir}/transcripts_not_segmented_input_no_numbers/${asr_model_name}.manifest"
+  mkdir -p "$(dirname "${transcript_no_numbers}")"
   python ~/NeMo/examples/asr/transcribe_speech.py "${asr_model_argument_name}"="${asr_model}" \
     audio_dir="${audio_dir}" \
-    output_filename="${transcript}" \
+    output_filename="${transcript_no_numbers}" \
     cuda=true \
     batch_size=1
 fi
+
+
+printf "\n\nTransforming text to numbers.."
+if [ "${segmented}" -eq 1 ]; then
+  transcript="${output_dir}/transcripts_segmented_input/${asr_model_name}.manifest"
+else
+  transcript="${output_dir}/transcripts_not_segmented_input/${asr_model_name}.manifest"
+fi
+mkdir -p "$(dirname "${transcript}")"
+python text_to_numbers.py -i "${inp_manifest_path}" -o "${out_manifest_dir}/$(basename "${inp_manifest_path}")"
 
 
 printf "\n\nComputing WER..\n"
