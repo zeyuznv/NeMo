@@ -17,7 +17,6 @@ source test_iwslt.sh ~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019-2 \
   1
 MULTILINE-COMMENT
 
-set -e
 
 dataset_dir="$(realpath "$1")"
 asr_model="$2"  # Path to checkpoint or NGC pretrained name
@@ -77,7 +76,6 @@ if [ "${segmented}" -eq 1 ]; then
 else
   if [ "${segmented}" -ne 0 ]; then
     echo "Wrong value '${segmented}' of fifth parameter of 'translate_and_score.sh'. Only '0' and '1' are supported."
-    cd interrupt this script
   fi
   transcript_no_numbers="${output_dir}/transcripts_not_segmented_input_no_numbers/${asr_model_name}.manifest"
   mkdir -p "$(dirname "${transcript_no_numbers}")"
@@ -166,7 +164,6 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
 else
   if [ "${segmented}" -ne 0 ]; then
     echo "Wrong value '${mwerSegmenter}' of sixth parameter of 'translate_and_score.sh'. Only '0' and '1' are supported."
-    cd interrupt this script
   fi
   translated_text_for_scoring="${translated_text}"
   reference="${output_dir}/iwslt_de_text_by_wavs.txt"
@@ -184,5 +181,3 @@ echo "" >> "${output_file}"
 echo "ASR model: ${asr_model}" >> "${output_file}"
 echo "NMT model: ${translation_model}" >> "${output_file}"
 echo "BLUE: ${bleu}" >> "${output_file}"
-
-set +e
