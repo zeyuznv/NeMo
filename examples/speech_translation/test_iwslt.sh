@@ -77,7 +77,7 @@ if [ "${segmented}" -eq 1 ]; then
 else
   if [ "${segmented}" -ne 0 ]; then
     echo "Wrong value '${segmented}' of fifth parameter of 'translate_and_score.sh'. Only '0' and '1' are supported."
-    return 1
+    cd interrupt this script
   fi
   transcript_no_numbers="${output_dir}/transcripts_not_segmented_input_no_numbers/${asr_model_name}.manifest"
   mkdir -p "$(dirname "${transcript_no_numbers}")"
@@ -166,7 +166,7 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
 else
   if [ "${segmented}" -ne 0 ]; then
     echo "Wrong value '${mwerSegmenter}' of sixth parameter of 'translate_and_score.sh'. Only '0' and '1' are supported."
-    return 1
+    cd interrupt this script
   fi
   translated_text_for_scoring="${translated_text}"
   reference="${output_dir}/iwslt_de_text_by_wavs.txt"
