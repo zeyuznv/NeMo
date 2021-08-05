@@ -27,6 +27,8 @@ source test_iwslt.sh ~/data/IWSLT.tst2019 \
   1
 MULTILINE-COMMENT
 
+set -e
+
 
 dataset_dir="$(realpath "$1")"
 asr_model="$2"  # Path to checkpoint or NGC pretrained name
@@ -145,8 +147,6 @@ python translate_iwslt.py "${translation_model_parameter}" "${translation_model}
 
 if [ "${mwerSegmenter}" -eq 1 ]; then
   printf "\n\nSegmenting translations using mwerSegmenter..\n"
-  conda activate mwerSegmenter  # python 2 conda environment
-  cd ~/mwerSegmenter/
   if [ "${segmented}" -eq 1 ]; then
     translation_dir_mwer_xml="${output_dir}/mwer_translations_xml_segmented_input"
     translation_dir_mwer_txt="${output_dir}/mwer_translations_txt_segmented_input"
@@ -157,6 +157,21 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
   translated_mwer_xml="${translation_dir_mwer_xml}/${translation_model_name}/${asr_model_name}.xml"
   mkdir -p "$(dirname "${translated_mwer_xml}")"
   translated_text_for_scoring="${translation_dir_mwer_txt}/${translation_model_name}/${asr_model_name}.txt"
+  (
+  __conda_setup="$("/home/${USER}/anaconda3/bin/conda" 'shell.bash' 'hook' 2> /dev/null)"
+  if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+  else
+    if [ -f "/home/${USER}/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/${USER}/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/${USER}/anaconda3/bin:$PATH"
+    fi
+  fi
+  unset __conda_setup
+  set -e
+  conda activate mwerSegmenter  # python 2 conda environment
+  cd ~/mwerSegmenter/
   ./segmentBasedOnMWER.sh "${dataset_dir}/IWSLT.TED.tst2019.en-de.en.xml" \
     "${dataset_dir}/IWSLT.TED.tst2019.en-de.de.xml" \
     "${translated_text}" \
@@ -165,8 +180,8 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
     "${translated_mwer_xml}" \
     no \
     1
-  cd -
   conda deactivate
+  )
   reference="${output_dir}/iwslt_de_text_by_segs.txt"
   python xml_2_text_segs_2_lines.py -i "${dataset_dir}/IWSLT.TED.tst2019.en-de.de.xml" -o "${reference}"
   mkdir -p "$(dirname "${translated_text_for_scoring}")"
@@ -197,3 +212,5 @@ echo "" >> "${output_file}"
 echo "ASR model: ${asr_model}" >> "${output_file}"
 echo "NMT model: ${translation_model}" >> "${output_file}"
 echo "BLUE: ${bleu}" >> "${output_file}"
+
+set +e
