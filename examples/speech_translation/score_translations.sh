@@ -1,7 +1,7 @@
 set -e
 
 
-if [ -z "${workdir}"]; then
+if [ -z "${workdir}" ]; then
   workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 fi
 references=(
