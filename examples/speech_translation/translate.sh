@@ -23,7 +23,7 @@ transcript_models_only_segmented_data=(
   sel_jarvisasrset_d512_adamwlr2_wd0_aug10x0.05_sp128_500e-last.nemo
 )
 
-if [ -z "${workdir}"]; then
+if [ -z "${workdir}" ]; then
   workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 fi
 translated_dirs=( translated_transcripts_segmented translated_transcripts_not_segmented )

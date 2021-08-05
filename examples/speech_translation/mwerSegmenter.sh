@@ -16,7 +16,7 @@ unset __conda_setup
 conda activate mwerSegmenter
 cd ~/mwerSegmenter/
 
-if [ -z "${workdir}"]; then
+if [ -z "${workdir}" ]; then
   workdir=~/data/iwslt/IWSLT-SLT/eval/en-de/IWSLT.tst2019
 fi
 translations=( translated_transcripts_segmented translated_transcripts_not_segmented )
@@ -41,4 +41,5 @@ for tr in "${translations[@]}"; do
   done
 done
 conda deactivate
+cd -
 set +e
