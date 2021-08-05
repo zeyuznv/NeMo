@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 
-ADD_COLON_RE = re.compile("([a-z])(?=\n | [0-9])")
+ADD_COLON_RE = re.compile("(^[\\w\\.\\-]+|(?<=.\n|  )[\\w\\.\\-]+)(?=\n | [0-9])")
 
 
 ORDER = [
@@ -49,11 +49,14 @@ def print_data(data, order):
     values = list(data.values())
     if isinstance(values[0], float):
         for key in order:
-            if f"{key}.txt" in data:
+            if f"{key}.txt" in data or key in data:
                 print(key)
         for key in order:
-            if f"{key}.txt" in data:
-                print(data[f"{key}.txt"])
+            if f"{key}.txt" in data or key in data:
+                if key in data:
+                    print(data[key])
+                else:
+                    print(data[f"{key}.txt"])
     else:
         for k, v in data.items():
             print(f'{k}:')
