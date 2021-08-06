@@ -1,5 +1,7 @@
 import json
 import re
+import json
+import re
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -20,7 +22,7 @@ MONTHS = [
 ]
 
 
-NUMBERS = {
+TEXT_TO_NUMBERS = {
   "zero": "0",
   "one": "1",
   "two": "2",
@@ -125,28 +127,40 @@ NUMBERS = {
 
 
 def add_ordinals_to_numbers():
-    for k, v in NUMBERS.copy().items():
+    for k, v in TEXT_TO_NUMBERS.copy().items():
         if k.endswith("one"):
-            NUMBERS[k[:-3] + "first"] = v + 'st'
+            TEXT_TO_NUMBERS[k[:-3] + "first"] = v + 'st'
         elif k.endswith("two"):
-            NUMBERS[k[:-3] + "second"] = v + 'nd'
+            TEXT_TO_NUMBERS[k[:-3] + "second"] = v + 'nd'
         elif k.endswith("three"):
-            NUMBERS[k[:-5] + "third"] = v + "rd"
+            TEXT_TO_NUMBERS[k[:-5] + "third"] = v + "rd"
         elif k.endswith("five"):
-            NUMBERS[k[:-4] + "fifth"] = v + "th"
+            TEXT_TO_NUMBERS[k[:-4] + "fifth"] = v + "th"
         elif k.endswith("eight"):
-            NUMBERS[k + 'h'] = v + 'th'
+            TEXT_TO_NUMBERS[k + 'h'] = v + 'th'
         elif k.endswith("nine"):
-            NUMBERS[k[:-4] + "ninth"] = v + 'th'
+            TEXT_TO_NUMBERS[k[:-4] + "ninth"] = v + 'th'
         elif k.endswith("twelve"):
-            NUMBERS[k[:-6] + "twelfth"] = v + 'th'
+            TEXT_TO_NUMBERS[k[:-6] + "twelfth"] = v + 'th'
         elif k.endswith("y"):
-            NUMBERS[k[:-1] + 'ieth'] = v + 'th'
+            TEXT_TO_NUMBERS[k[:-1] + 'ieth'] = v + 'th'
         else:
-            NUMBERS[k + 'th'] = v + 'th'
+            TEXT_TO_NUMBERS[k + 'th'] = v + 'th'
 
 
 add_ordinals_to_numbers()
+
+
+def flip_dict(d):
+    result = {}
+    for k, v in d.items():
+        if v in result:
+            raise ValueError(f"Flipped dict has to have unique values. Value {repr(v)} is repeated at least twice.")
+        result[v] = k
+    return result
+
+
+NUMBERS_TO_TEXT = flip_dict(TEXT_TO_NUMBERS)
 
 
 SINGLE_NUMBERS = {
@@ -164,7 +178,7 @@ SINGLE_NUMBERS = {
 
 
 def str_to_number_repl(match):
-    return NUMBERS[match.group(0).lower()]
+    return TEXT_TO_NUMBERS[match.group(0).lower()]
 
 
 def single_number_to_str_repl(match):
@@ -172,11 +186,15 @@ def single_number_to_str_repl(match):
 
 
 def single_ordinal_to_str_repl(match):
-    return match.group(0)[:-2]
+    return NUMBERS_TO_TEXT[match.group(0)]
 
 
 def hundred_repl(match_obj):
-    second_term = 0 if match_obj.group(2) is None else int(match_obj.group(2))
+    if match_obj.group(2) is None:
+        second_term = 0
+    else:
+        t = match_obj.group(2)[5:] if match_obj.group(2).startswith(" and ") else match_obj.group(2)
+        second_term = int(t)
     return str(int(match_obj.group(1)) * 100 + second_term)
 
 
@@ -192,7 +210,12 @@ def ten_power_3n_repl(match_obj):
     result = 0
     for i in range(start, start + n):
         power = (start + n - i - 1) * 3
-        result += 0 if match_obj.group(i) is None else int(match_obj.group(i)) * 10 ** power
+        if match_obj.group(i) is None:
+            term = 0
+        else:
+            t = match_obj.group(i)[5:] if match_obj.group(i).startswith(" and ") else match_obj.group(i)
+            term = int(t)
+        result += term * 10 ** power
     return str(result)
 
 
@@ -202,33 +225,45 @@ def month_day_repl(match):
 
 REPLACEMENTS = [
     (
-        re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(NUMBERS.keys())[::-1]]), flags=re.I),
+        re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(TEXT_TO_NUMBERS.keys())[::-1]]), flags=re.I),
         str_to_number_repl
     ),
-    (re.compile(r"\b([1-9]) hundred( [0-9]{1,2})?", flags=re.I), hundred_repl),
+    (re.compile(r"\b([1-9]) hundred((?: and)? [0-9]{1,2})?", flags=re.I), hundred_repl),
     (
         re.compile(
             # r"(\b(?:([1-9][0-9]{0,2}) billion)(?:( [1-9][0-9]{0,2}) million)?(?:( [1-9][0-9]{0,2}) thousand)?"
             # r"( [1-9][0-9]{0,2})?)|"
             # r"(\b(?:([1-9][0-9]{0,2}) million)(?:( [1-9][0-9]{0,2}) thousand)?( [1-9][0-9]{0,2})?)|"
-            r"(\b(?:([1-9][0-9]{0,2}) thousand)( [1-9][0-9]{0,2})?)|"
+            r"(\b(?:([1-9][0-9]{0,2}) thousand)((?: and)? [1-9][0-9]{0,2})?)|"
             r"(\b([1-9][0-9]{0,2}))",
             flags=re.IGNORECASE,
         ),
         ten_power_3n_repl
     ),
     (re.compile(r"(?<![0-9] )\b([0-9]{1,2}) ([0-9]{1,2})(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
+    (re.compile(r"\b[0-9]\b", flags=re.I), single_number_to_str_repl),
     (re.compile(r"\s+", flags=re.I), " "),
     (
         re.compile(
-            f'({"|".join(MONTHS)})' + ' (' + "|".join([rf"\b{k}\b" for k in list(NUMBERS.values())[131:100:-1]]) + ')',
+            f'({"|".join(MONTHS)})' + ' (' + "|".join([rf"\b{k}\b" for k in list(TEXT_TO_NUMBERS.values())[131:100:-1]]) + ')',
             flags=re.I
         ),
         month_day_repl,
     ),
-    (re.compile(rf"\b{'|'.join(list(NUMBERS.values())[100:110])}\b", flags=re.I), single_ordinal_to_str_repl),
-    (re.compile(r"\b[0-9]\b", flags=re.I), single_number_to_str_repl),
+    (
+        re.compile(
+            rf"\b(?:{'|'.join(list(TEXT_TO_NUMBERS.values())[100:110])})\b(?! of ({'|'.join(MONTHS)})\b)",
+            flags=re.I
+        ),
+        single_ordinal_to_str_repl
+    ),
 ]
+
+
+def text_to_numbers(text):
+    for r in REPLACEMENTS:
+        text = r[0].sub(r[1], text)
+    return text
 
 
 def get_args():
@@ -240,12 +275,6 @@ def get_args():
     args.input = args.input.expanduser()
     args.output = args.output.expanduser()
     return args
-
-
-def text_to_numbers(text):
-    for r in REPLACEMENTS:
-        text = r[0].sub(r[1], text)
-    return text
 
 
 def main():
