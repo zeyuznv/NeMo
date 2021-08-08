@@ -31,7 +31,7 @@ from nemo.utils import logging
 
 def get_features(
     queries: List[str],
-    max_seq_length: int,
+    max_seq_length: Optional[int],
     tokenizer: TokenizerSpec,
     punct_label_ids: dict = None,
     capit_label_ids: dict = None,
@@ -130,7 +130,10 @@ def get_features(
             capit_labels.append(pad_id)
             capit_all_labels.append(capit_labels)
 
-    max_seq_length = min(max_seq_length, max(sent_lengths))
+    if max_seq_length is None:
+        max_seq_length = max(sent_lengths)
+    else:
+        max_seq_length = min(max_seq_length, max(sent_lengths))
     logging.info(f'Max length: {max_seq_length}')
     get_stats(sent_lengths)
     too_long_count = 0
