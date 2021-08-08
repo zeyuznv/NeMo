@@ -223,6 +223,19 @@ def month_day_repl(match):
     return match.group(1) + ' ' + match.group(2)[:-2]
 
 
+def decimal_repl(match):
+    text = match.group(0)
+    parts = text.split()
+    return parts[0] + '.' + ''.join(parts[2:])
+
+
+def decimal_deparse_repl(match):
+    text = match.group(0)
+    int_part = text.split('.')[0]
+    fraction_part = text.split('.')[1]
+    return int_part + ' point ' + ' '.join(fraction_part)
+
+
 REPLACEMENTS = [
     (
         re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(TEXT_TO_NUMBERS.keys())[::-1]]), flags=re.I),
@@ -240,8 +253,10 @@ REPLACEMENTS = [
         ),
         ten_power_3n_repl
     ),
-    (re.compile(r"(?<![0-9] )\b([0-9]{1,2}) ([0-9]{1,2})(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
-    (re.compile(r"\b[0-9]\b", flags=re.I), single_number_to_str_repl),
+    (re.compile(r"(?<![0-9] )\b([0-9]{2}) ([0-9]{2})(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
+    (re.compile(r"(?:[0-9]+|0) point(?: [0-9])+", flags=re.I), decimal_repl),  # before replacing single digits parse decimals
+    (re.compile(r"(?<!\.)\b[0-9]\b", flags=re.I), single_number_to_str_repl),
+    (re.compile(r"(?:[1-9][0-9]*|0)\.[0-9]*[1-9]"), decimal_deparse_repl),
     (re.compile(r"\s+", flags=re.I), " "),
     (
         re.compile(

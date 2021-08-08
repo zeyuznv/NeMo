@@ -9,6 +9,8 @@ from nemo.collections.nlp.models import PunctuationCapitalizationModel
 TALK_ID_COMPILED_PATTERN = re.compile(r"[1-9][0-9]*(?=\.wav$)")
 SPACE_DEDUP = re.compile(r' +')
 LONG_NUMBER = re.compile(r"[1-9][0-9]{3,}")
+PUNCTUATION = re.compile("[.,?]")
+DECIMAL = re.compile(f"[0-9]+{PUNCTUATION.pattern}? point({PUNCTUATION.pattern}? [0-9])+", flags=re.I)
 
 
 def get_args():
@@ -65,6 +67,12 @@ def insert_commas_in_long_numbers(match):
     return result
 
 
+def decimal_repl(match):
+    text = PUNCTUATION.sub('', match.group(0))
+    parts = text.split()
+    return parts[0] + '.' + ''.join(parts[2:])
+
+
 def main():
     args = get_args()
     model = PunctuationCapitalizationModel.from_pretrained("punctuation_en_bert")
@@ -79,7 +87,7 @@ def main():
         processed.append(
             LONG_NUMBER.sub(
                 insert_commas_in_long_numbers,
-                SPACE_DEDUP.sub(' ', ' '.join(processed_segments))
+                DECIMAL.sub(decimal_repl, SPACE_DEDUP.sub(' ', ' '.join(processed_segments))),
             )
         )
     args.output.parent.mkdir(parents=True, exist_ok=True)
