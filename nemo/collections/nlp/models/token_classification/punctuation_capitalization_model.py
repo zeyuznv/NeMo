@@ -442,7 +442,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     if_first_segment_in_query = not all_punct_preds[q_i]
                     if not if_first_segment_in_query:
                         start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
-                    stm = self.remove_margins(stm, keep_left=if_first_segment_in_query, keep_right=last)
+                    stm = self.remove_margins(stm, margin, keep_left=if_first_segment_in_query, keep_right=last)
                     b_punct_probs.append(
                         torch.nn.functional.softmax(
                             self.remove_margins(pl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
