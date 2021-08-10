@@ -377,6 +377,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
         print("len(pred):", len(pred))
         acc_prob = acc_prob[number_of_probs_to_move:]
+        print("acc_prob.shape:", acc_prob.shape)
         return pred, acc_prob
 
     @staticmethod
@@ -468,7 +469,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                         assert acc_capit_probs[q_i] is None
                         acc_capit_probs[q_i] = b_capit_probs_i
                     else:
-                        print("acc_punct_probs[q_i].shape:", acc_punct_probs[q_i].shape)
+                        print("Beginning of query loop body. acc_punct_probs[q_i].shape:", acc_punct_probs[q_i].shape)
                         all_punct_preds[q_i], acc_punct_probs[q_i] = \
                             self.move_from_accumulated_probabilities_to_token_predictions(
                                 all_punct_preds[q_i], acc_punct_probs[q_i], start_word_id - len(all_punct_preds[q_i]))
@@ -479,6 +480,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                             acc_punct_probs[q_i], b_punct_probs_i)
                         acc_capit_probs[q_i] = self.update_accumulated_probabilities(
                             acc_capit_probs[q_i], b_capit_probs_i)
+                        print("End of query loop body. acc_punct_probs[q_i].shape:", acc_punct_probs[q_i].shape)
             for q_i, (pred, prob) in enumerate(zip(all_punct_preds, acc_punct_probs)):
                 all_punct_preds[q_i], acc_punct_probs[q_i] = \
                     self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
