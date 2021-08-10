@@ -438,11 +438,13 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             for batch in infer_datalayer:
                 input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
                 print("(add_punctuation_capitalization)subtokens_mask.shape:", subtokens_mask.shape)
+                print("(add_punctuation_capitalization)input_ids.shape:", input_ids.shape)
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
+                print("(add_punctuation_capitalization)punct_logits.shape, capit_logits.shape:", punct_logits.shape, capit_logits.shape)
                 subtokens_mask = subtokens_mask > 0.5
                 b_punct_probs, b_capit_probs = [], []
                 start_word_ids = list(start_word_ids)
