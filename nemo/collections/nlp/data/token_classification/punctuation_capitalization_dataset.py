@@ -487,7 +487,7 @@ def get_features_infer(
     queries: List[str],
     tokenizer: TokenizerSpec,
     max_seq_length: int = 512,
-    step: Optional[int] = None,
+    step: Optional[int] = 128,
     margin: Optional[int] = 0,
 ):
     """
@@ -532,21 +532,20 @@ def get_features_infer(
         st.append(subtokens)
         stm.append(subtokens_mask)
 
+    if margin >= (max_seq_length - 2) // 2 and margin > 0 or margin < 0:
+        raise ValueError(f"Parameter `margin` has to not negative be less than `(max_seq_length - 2) // 2`. "
+                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
+                         f"margin={margin}, max_seq_length={max_seq_length}")
+    if step <= 0:
+        raise ValueError(f"Parameter `step` has to be positive whereas step={step}")
+    if step > max_seq_length - 2 - 2 * margin:
+        logging.warning(f"Parameter step={step} is too big. When needed to will be reduced to "
+                        f"`max_seq_length - 2 - 2 * margin = {max_seq_length - 2 - 2 * margin}`.")
     max_seq_length = min(max_seq_length, max(sent_lengths) + 2)
     logging.info(f'Max length: {max_seq_length}')
     # Maximum number of word subtokens in segment. The first and the last tokens in segment are CLS and EOS
     length = max_seq_length - 2
-    if margin >= length // 2 and margin > 0:
-        raise ValueError(f"Parameter `margin` has to be less than `(max_seq_length - 2) // 2`. "
-                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
-                         f"margin={margin}, max_seq_length={max_seq_length}")
-    if step is None:
-        step = length - margin * 2
-    if (step > length - margin * 2 or step <= 0) and length - margin * 2 > 0:
-        raise ValueError(f"Parameter `step` has to be positive and less or equal to the difference "
-                         f"`max_seq_length - 2 - margin * 2`. "
-                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
-                         f"step={step} max_seq_length={max_seq_length} margin={margin}")
+    step = min(length - margin * 2, step)
     get_stats(sent_lengths)
     all_input_ids = []
     all_segment_ids = []
