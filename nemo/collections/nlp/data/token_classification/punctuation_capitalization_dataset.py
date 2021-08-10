@@ -485,8 +485,8 @@ def find_idx_of_first_nonzero(stm, start, max_, left):
 
 def get_features_infer(
     queries: List[str],
-    max_seq_length: int,
     tokenizer: TokenizerSpec,
+    max_seq_length: int = 512,
     step: Optional[int] = None,
     margin: Optional[int] = 0,
 ):
@@ -532,10 +532,7 @@ def get_features_infer(
         st.append(subtokens)
         stm.append(subtokens_mask)
 
-    if max_seq_length is None:
-        max_seq_length = max(sent_lengths)
-    else:
-        max_seq_length = min(max_seq_length, max(sent_lengths))
+    max_seq_length = min(max_seq_length, max(sent_lengths) + 2)
     logging.info(f'Max length: {max_seq_length}')
     # Maximum number of word subtokens in segment. The first and the last tokens in segment are CLS and EOS
     length = max_seq_length - 2
