@@ -470,6 +470,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                         assert acc_capit_probs[q_i] is None
                         acc_capit_probs[q_i] = b_capit_probs_i
                     else:
+                        print("q_i:", q_i)
                         all_punct_preds[q_i], acc_punct_probs[q_i] = \
                             self.move_from_accumulated_probabilities_to_token_predictions(
                                 all_punct_preds[q_i], acc_punct_probs[q_i], start_word_id - len(all_punct_preds[q_i]))
