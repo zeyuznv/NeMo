@@ -388,9 +388,9 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
     @staticmethod
     def remove_margins(tensor, margin_size, keep_left, keep_right):
         if not keep_left:
-            tensor = tensor[:margin_size]
+            tensor = tensor[margin_size:]
         if not keep_right:
-            tensor = tensor[-margin_size:]
+            tensor = tensor[:-margin_size]
         return tensor
 
     def add_punctuation_capitalization(
