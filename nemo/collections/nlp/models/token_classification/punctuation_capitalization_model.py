@@ -371,7 +371,10 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
-        pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move]))
+        print("move_from_accumulated_probabilities_to_token_predictions")
+        print("pred:", pred)
+        print("new pred:", tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1)))
+        pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
         acc_prob = acc_prob[number_of_probs_to_move:]
         return pred, acc_prob
 
