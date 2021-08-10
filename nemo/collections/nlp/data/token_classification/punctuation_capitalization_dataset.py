@@ -645,6 +645,8 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     def collate_fn(self, batch):
         input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
             zip(*batch)
+        print("len(input_ids):", len(input_ids))
+        print("type(input_ids[0]):", type(input_ids[0]))
         return (
             pad_sequence(input_ids, batch_first=True, padding_value=0),
             pad_sequence(segment_ids, batch_first=True, padding_value=0),
