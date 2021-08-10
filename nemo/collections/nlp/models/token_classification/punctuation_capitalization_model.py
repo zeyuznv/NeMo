@@ -372,7 +372,10 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
     @staticmethod
     def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
         print("number_of_probs_to_move:", number_of_probs_to_move)
+        print("acc_prob.shape:", acc_prob.shape)
+        print("len(pred):", len(pred))
         pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
+        print("len(pred):", len(pred))
         acc_prob = acc_prob[number_of_probs_to_move:]
         return pred, acc_prob
 
@@ -430,6 +433,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
             for batch in infer_datalayer:
                 input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
+                print("start_word_ids:", start_word_ids)
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),
