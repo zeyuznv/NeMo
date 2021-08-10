@@ -531,7 +531,6 @@ def get_features_infer(
         sent_lengths.append(len(subtokens))
         st.append(subtokens)
         stm.append(subtokens_mask)
-    print("Number of nonzero elements in original subtokens_mask:", [np.count_nonzero(x) for x in stm])
 
     if max_seq_length is None:
         max_seq_length = max(sent_lengths)
