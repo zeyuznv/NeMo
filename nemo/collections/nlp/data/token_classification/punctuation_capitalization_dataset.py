@@ -645,24 +645,19 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     def collate_fn(self, batch):
         input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
             zip(*batch)
-        print("len(input_ids):", len(input_ids))
-        print("type(input_ids[0]):", type(input_ids[0]))
-        print("input_ids[0].shape:", input_ids[0].shape)
-        print("input_ids[0].dtype:", input_ids[0].dtype)
-        print("all `input_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_ids]))
-        print("all `segment_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in segment_ids]))
-        print("all `input_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_mask]))
-        print("all `subtokens_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in subtokens_mask]))
-        try:
-            input_ids = pad_sequence(input_ids, batch_first=True, padding_value=0)
-        except TypeError:
-            print(repr(input_ids))
-            raise
+        # print("len(input_ids):", len(input_ids))
+        # print("type(input_ids[0]):", type(input_ids[0]))
+        # print("input_ids[0].shape:", input_ids[0].shape)
+        # print("input_ids[0].dtype:", input_ids[0].dtype)
+        # print("all `input_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_ids]))
+        # print("all `segment_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in segment_ids]))
+        # print("all `input_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_mask]))
+        # print("all `subtokens_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in subtokens_mask]))
         return (
-            input_ids,
-            pad_sequence(segment_ids, batch_first=True, padding_value=0),
-            pad_sequence(input_mask, batch_first=True, padding_value=0),
-            pad_sequence(subtokens_mask, batch_first=True, padding_value=0),
+            pad_sequence([torch.tensor(x) for x in input_ids], batch_first=True, padding_value=0),
+            pad_sequence([torch.tensor(x) for x in segment_ids], batch_first=True, padding_value=0),
+            pad_sequence([torch.tensor(x) for x in input_mask], batch_first=True, padding_value=0),
+            pad_sequence([torch.tensor(x) for x in subtokens_mask], batch_first=True, padding_value=0),
             quantities_of_preceding_words,
             query_ids,
             is_last,
