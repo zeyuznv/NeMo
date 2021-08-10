@@ -371,9 +371,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
-        print("move_from_accumulated_probabilities_to_token_predictions")
-        print("pred:", pred)
-        print("new pred:", tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1)))
         pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
         acc_prob = acc_prob[number_of_probs_to_move:]
         return pred, acc_prob
@@ -432,7 +429,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
             for batch in infer_datalayer:
                 input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
-
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),
@@ -440,6 +436,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                 )
                 subtokens_mask = subtokens_mask > 0.5
                 b_punct_probs, b_capit_probs = [], []
+                start_word_ids = list(start_word_ids)
                 for i, (last, q_i, pl, cl, stm) in enumerate(
                         zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
                     if_first_segment_in_query = not all_punct_preds[q_i]
