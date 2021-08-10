@@ -554,16 +554,13 @@ def get_features_infer(
     all_quantities_of_preceding_words = []
     all_query_ids = []
     all_is_last = []
-    print("st:", st)
     for q_i, query_st in enumerate(st):
         q_input_ids = []
         q_segment_ids = []
         q_subtokens_mask = []
         q_input_mask = []
         q_quantities_of_preceding_words = []
-        print("step:", step)
         for i in range(0, len(query_st) - length + step, step):
-            print("i:", i)
             subtokens = [tokenizer.cls_token] + st[q_i][i:i + length] + [tokenizer.sep_token]
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
             q_segment_ids.append([0] * len(subtokens))
