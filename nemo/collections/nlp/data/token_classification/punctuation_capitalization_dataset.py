@@ -542,7 +542,7 @@ def get_features_infer(
                          f"margin={margin}, max_seq_length={max_seq_length}")
     if step is None:
         step = length - margin * 2
-    if step > length - margin * 2 or step <= 0:
+    if (step > length - margin * 2 or step <= 0) and length - margin * 2 > 0:
         raise ValueError(f"Parameter `step` has to be positive and less or equal to the difference "
                          f"`max_seq_length - 2 - margin * 2`. "
                          f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
