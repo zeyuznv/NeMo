@@ -567,9 +567,9 @@ def get_features_infer(
         for i in range(0, len(query_st) - length + step - 1, step):
             subtokens = [tokenizer.cls_token] + st[q_i][i:i + length] + [tokenizer.sep_token]
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
-            q_segment_ids.append([0] * (len(subtokens) + 2))
+            q_segment_ids.append([0] * len(subtokens))
             q_subtokens_mask.append([0] + stm[q_i][i:i + length] + [0])
-            q_input_mask.append([1] * (len(subtokens) + 2))
+            q_input_mask.append([1] * len(subtokens))
             q_quantities_of_preceding_words.append(np.count_nonzero(stm[q_i][:i]))
         all_input_ids.append(q_input_ids)
         all_segment_ids.append(q_segment_ids)
@@ -645,14 +645,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     def collate_fn(self, batch):
         input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
             zip(*batch)
-        # print("len(input_ids):", len(input_ids))
-        # print("type(input_ids[0]):", type(input_ids[0]))
-        # print("input_ids[0].shape:", input_ids[0].shape)
-        # print("input_ids[0].dtype:", input_ids[0].dtype)
-        # print("all `input_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_ids]))
-        # print("all `segment_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in segment_ids]))
-        # print("all `input_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_mask]))
-        # print("all `subtokens_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in subtokens_mask]))
         return (
             pad_sequence([torch.tensor(x) for x in input_ids], batch_first=True, padding_value=0),
             pad_sequence([torch.tensor(x) for x in segment_ids], batch_first=True, padding_value=0),
