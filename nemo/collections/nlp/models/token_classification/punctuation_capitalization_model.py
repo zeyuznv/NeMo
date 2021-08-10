@@ -474,11 +474,13 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                         acc_capit_probs[q_i] = self.update_accumulated_probabilities(
                             acc_capit_probs[q_i], b_capit_probs_i)
             for q_i, (pred, prob) in enumerate(zip(all_punct_preds, acc_punct_probs)):
-                all_punct_preds[q_i], acc_punct_probs[q_i] = \
-                    self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
+                if prob is not None:
+                    all_punct_preds[q_i], acc_punct_probs[q_i] = \
+                        self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
             for q_i, (pred, prob) in enumerate(zip(all_capit_preds, acc_capit_probs)):
-                all_capit_preds[q_i], acc_capit_probs[q_i] = \
-                    self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
+                if prob is not None:
+                    all_capit_preds[q_i], acc_capit_probs[q_i] = \
+                        self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
 
             punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
             capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
