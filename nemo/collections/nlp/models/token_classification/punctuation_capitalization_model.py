@@ -496,6 +496,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                 punct_preds = all_punct_preds[i]
                 capit_preds = all_capit_preds[i]
                 assert len(query) == len(punct_preds), f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}"
+                assert len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}"
                 query_with_punct_and_capit = ''
                 for j, word in enumerate(query):
                     punct_label = punct_ids_to_labels[punct_preds[j]]
