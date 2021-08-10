@@ -647,7 +647,10 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             zip(*batch)
         print("len(input_ids):", len(input_ids))
         print("type(input_ids[0]):", type(input_ids[0]))
-        print("all are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_ids]))
+        print("all `input_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_ids]))
+        print("all `segment_ids` are numpy arrays:", all([isinstance(x, np.ndarray) for x in segment_ids]))
+        print("all `input_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in input_mask]))
+        print("all `subtokens_mask` are numpy arrays:", all([isinstance(x, np.ndarray) for x in subtokens_mask]))
         return (
             pad_sequence(input_ids, batch_first=True, padding_value=0),
             pad_sequence(segment_ids, batch_first=True, padding_value=0),
