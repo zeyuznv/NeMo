@@ -562,7 +562,7 @@ def get_features_infer(
         q_input_mask = []
         q_quantities_of_preceding_words = []
         print("step:", step)
-        for i in range(0, len(query_st) - length + step - 1, step):
+        for i in range(0, len(query_st) - length + step, step):
             print("i:", i)
             subtokens = [tokenizer.cls_token] + st[q_i][i:i + length] + [tokenizer.sep_token]
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
