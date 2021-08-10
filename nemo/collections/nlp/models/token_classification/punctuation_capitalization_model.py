@@ -383,8 +383,10 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def update_accumulated_probabilities(acc_prob, update):
+        print("(update_accumulated_probabilities)acc_prob.shape, update.shape:", acc_prob.shape, update.shape)
         acc_prob *= update[:acc_prob.shape[0]]
         acc_prob = torch.cat([acc_prob, update[acc_prob.shape[0]:]], dim=0)
+        print("(update_accumulated_probabilities)acc_prob.shape:", acc_prob.shape)
         return acc_prob
 
     @staticmethod
