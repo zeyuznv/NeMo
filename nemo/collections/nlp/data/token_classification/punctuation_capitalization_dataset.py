@@ -578,13 +578,13 @@ def get_features_infer(
         all_query_ids.append([q_i] * len(q_input_ids))
         all_is_last.append([False] * (len(q_input_ids) - 1) + [True])
     return (
-        list(itertools.chain(all_input_ids)),
-        list(itertools.chain(all_segment_ids)),
-        list(itertools.chain(all_input_mask)),
-        list(itertools.chain(all_subtokens_mask)),
-        list(itertools.chain(all_quantities_of_preceding_words)),
-        list(itertools.chain(all_query_ids)),
-        list(itertools.chain(all_is_last))
+        list(itertools.chain(*all_input_ids)),
+        list(itertools.chain(*all_segment_ids)),
+        list(itertools.chain(*all_input_mask)),
+        list(itertools.chain(*all_subtokens_mask)),
+        list(itertools.chain(*all_quantities_of_preceding_words)),
+        list(itertools.chain(*all_query_ids)),
+        list(itertools.chain(*all_is_last))
     )
 
 
