@@ -536,7 +536,7 @@ def get_features_infer(
     logging.info(f'Max length: {max_seq_length}')
     # Maximum number of word subtokens in segment. The first and the last tokens in segment are CLS and EOS
     length = max_seq_length - 2
-    if margin >= length // 2:
+    if margin >= length // 2 and margin > 0:
         raise ValueError(f"Parameter `margin` has to be less than `(max_seq_length - 2) // 2`. "
                          f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
                          f"margin={margin}, max_seq_length={max_seq_length}")
