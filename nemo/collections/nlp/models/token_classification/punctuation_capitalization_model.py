@@ -336,7 +336,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         )
 
     def _setup_infer_dataloader(
-        self, queries: List[str], batch_size: int, max_seq_length: int = None
+        self, queries: List[str], batch_size: int, max_seq_length: int = None, step: int = None, margin: int = None
     ) -> 'torch.utils.data.DataLoader':
         """
         Setup function for a infer data loader.
@@ -350,9 +350,13 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         """
         if max_seq_length is None:
             max_seq_length = self._cfg.dataset.max_seq_length
+        if step is None:
+            step = self._cfg.dataset.step
+        if margin is None:
+            margin = self._cfg.dataset.margin
 
         dataset = BertPunctuationCapitalizationInferDataset(
-            tokenizer=self.tokenizer, queries=queries, max_seq_length=max_seq_length
+            tokenizer=self.tokenizer, queries=queries, max_seq_length=max_seq_length, step=step, margin=margin
         )
 
         return torch.utils.data.DataLoader(
@@ -365,8 +369,28 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             drop_last=False,
         )
 
+    @staticmethod
+    def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
+        pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move]))
+        acc_prob = acc_prob[number_of_probs_to_move:]
+        return pred, acc_prob
+
+    @staticmethod
+    def update_accumulated_probabilities(acc_prob, update):
+        acc_prob *= update[:acc_prob.shape[0]]
+        acc_prob = torch.cat([acc_prob, update], dim=0)
+        return acc_prob
+
+    @staticmethod
+    def remove_margins(tensor, margin_size, keep_left, keep_right):
+        if not keep_left:
+            tensor = tensor[:margin_size]
+        if not keep_right:
+            tensor = tensor[-margin_size:]
+        return tensor
+
     def add_punctuation_capitalization(
-        self, queries: List[str], batch_size: int = None, max_seq_length: int = 512
+        self, queries: List[str], batch_size: int = None, max_seq_length: int = 512, step: int = 128, margin: int = 32
     ) -> List[str]:
         """
         Adds punctuation and capitalization to the queries. Use this method for debugging and prototyping.
@@ -394,32 +418,67 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             self.eval()
             self = self.to(device)
 
-            infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length)
+            infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length, step, margin)
 
             # store predictions for all queries in a single list
-            all_punct_preds = []
-            all_capit_preds = []
+            all_punct_preds = [[] for _ in queries]
+            all_capit_preds = [[] for _ in queries]
+
+            acc_punct_probs = [None for _ in queries]
+            acc_capit_probs = [None for _ in queries]
 
             for batch in infer_datalayer:
-                input_ids, input_type_ids, input_mask, subtokens_mask = batch
+                input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
 
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
-
                 subtokens_mask = subtokens_mask > 0.5
+                b_punct_probs, b_capit_probs = [], []
+                for i, (last, q_i, pl, cl, stm) in enumerate(
+                        zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
+                    if_first_segment_in_query = not all_punct_preds[q_i]
+                    if not if_first_segment_in_query:
+                        start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
+                    stm = self.remove_margins(stm, keep_left=if_first_segment_in_query, keep_right=last)
+                    b_punct_probs.append(
+                        torch.nn.functional.softmax(
+                            self.remove_margins(pl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
+                            dim=-1,
+                        )
+                    )
+                    b_capit_probs.append(
+                        torch.nn.functional.softmax(
+                            self.remove_margins(cl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
+                            dim=-1,
+                        )
+                    )
 
-                punct_preds = [
-                    tensor2list(p_l[subtokens_mask[i]]) for i, p_l in enumerate(torch.argmax(punct_logits, axis=-1))
-                ]
-                capit_preds = [
-                    tensor2list(c_l[subtokens_mask[i]]) for i, c_l in enumerate(torch.argmax(capit_logits, axis=-1))
-                ]
-
-                all_punct_preds.extend(punct_preds)
-                all_capit_preds.extend(capit_preds)
+                for i, (q_i, start_word_id, b_punct_probs_i, b_capit_probs_i) in enumerate(
+                        zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
+                    if acc_punct_probs[q_i] is None:
+                        acc_punct_probs[q_i] = b_punct_probs_i
+                        assert acc_capit_probs[q_i] is None
+                        acc_capit_probs[q_i] = b_capit_probs_i
+                    else:
+                        all_punct_preds[q_i], acc_punct_probs[q_i] = \
+                            self.move_from_accumulated_probabilities_to_token_predictions(
+                                all_punct_preds[q_i], acc_punct_probs[q_i], start_word_id - len(all_punct_preds[q_i]))
+                        all_capit_preds[q_i], acc_capit_probs[q_i] = \
+                            self.move_from_accumulated_probabilities_to_token_predictions(
+                                all_capit_preds[q_i], acc_capit_probs[q_i], start_word_id - len(all_capit_preds[q_i]))
+                        acc_punct_probs[q_i] = self.update_accumulated_probabilities(
+                            acc_punct_probs[q_i], b_punct_probs_i)
+                        acc_capit_probs[q_i] = self.update_accumulated_probabilities(
+                            acc_capit_probs[q_i], b_capit_probs_i)
+            for q_i, (pred, prob) in enumerate(zip(all_punct_preds, acc_punct_probs)):
+                all_punct_preds[q_i], acc_punct_probs[q_i] = \
+                    self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
+            for q_i, (pred, prob) in enumerate(zip(all_capit_preds, acc_capit_probs)):
+                all_punct_preds[q_i], acc_punct_probs[q_i] = \
+                    self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
 
             punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
             capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
@@ -428,16 +487,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             for i, query in enumerate(queries):
                 punct_preds = all_punct_preds[i]
                 capit_preds = all_capit_preds[i]
-                if len(query) != len(punct_preds):
-                    logging.warning(
-                        f'Max sequence length of query {query} is set to {max_seq_length}. Truncating the input.'
-                    )
-
-                    # removing the end of phrase punctuation of the truncated segment
-                    punct_preds[-1] = 0
-                    max_len = len(punct_preds)
-                    query = query[:max_len]
-
+                assert len(query) == len(punct_preds)
                 query_with_punct_and_capit = ''
                 for j, word in enumerate(query):
                     punct_label = punct_ids_to_labels[punct_preds[j]]

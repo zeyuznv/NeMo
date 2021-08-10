@@ -21,17 +21,18 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 from nemo.collections.nlp.data.data_utils.data_preprocessing import get_label_stats, get_stats
 from nemo.core.classes import Dataset
-from nemo.core.neural_types import ChannelType, LabelsType, MaskType, NeuralType
+from nemo.core.neural_types import ChannelType, Index, LabelsType, MaskType, NeuralType
 from nemo.utils import logging
 
 
 def get_features(
     queries: List[str],
-    max_seq_length: Optional[int],
+    max_seq_length: int,
     tokenizer: TokenizerSpec,
     punct_label_ids: dict = None,
     capit_label_ids: dict = None,
@@ -130,10 +131,7 @@ def get_features(
             capit_labels.append(pad_id)
             capit_all_labels.append(capit_labels)
 
-    if max_seq_length is None:
-        max_seq_length = max(sent_lengths)
-    else:
-        max_seq_length = min(max_seq_length, max(sent_lengths))
+    max_seq_length = min(max_seq_length, max(sent_lengths))
     logging.info(f'Max length: {max_seq_length}')
     get_stats(sent_lengths)
     too_long_count = 0
@@ -426,6 +424,170 @@ class BertPunctuationCapitalizationDataset(Dataset):
         )
 
 
+def split_into_overlapping_segments(seq, length, step, subtokens_mask, pad_value):
+    result = []
+    i = 0
+    if not subtokens_mask[0]:
+        logging.warning("The zeroth element of subtokens mask is zero. It is unexpected since the first subtoken of a "
+                        "word has to have mask 1. The zeroth segment starts in the middle of a word. "
+                        "This may affect performance.")
+    while i + length < len(seq):
+        end_of_segment = None
+        for j in range(0, length):
+            if subtokens_mask[i + length - j]:
+                end_of_segment = i + length - j
+                break
+        if end_of_segment is None:
+            logging.warning(f"Entire segment from {i} to {i + length} is inside 1 word. The segment ends in the "
+                            f"middle of a word. This may affect performance.")
+            result.append(seq[i:i + length])
+        else:
+            result.append(seq[i:end_of_segment] + [pad_value] * (end_of_segment - i))
+        beginning_of_next_segment = None
+        for j in range(0, step):
+            if subtokens_mask[i + step - j]:
+                beginning_of_next_segment = i + step - j
+                break
+        if beginning_of_next_segment is None:
+            logging.warning(f"Could not make a step {step}. Entire step is inside 1 word. Increasing step to the "
+                            f"beginning of next word.")
+            for j in range(step, length):
+                if subtokens_mask[i + j]:
+                    beginning_of_next_segment = i + j
+                    break
+            if beginning_of_next_segment is None:
+                logging.warning(f"Entire segment from {i} to {i + length} is inside 1 word. The next segment starts in "
+                                f"the middle of a word. This may affect performance. Step will be increased to the "
+                                f"length of the segment.")
+                i += length
+            else:
+                i = beginning_of_next_segment
+        else:
+            i = beginning_of_next_segment
+    return result
+
+
+def find_idx_of_first_nonzero(stm, start, max_, left):
+    if left:
+        end = start - max_
+        step = -1
+    else:
+        end = start + max_
+        step = 1
+    result = None
+    for i in range(start, end, step):
+        if stm[i]:
+            result = i
+            break
+    return result
+
+
+def get_features_infer(
+    queries: List[str],
+    max_seq_length: int,
+    tokenizer: TokenizerSpec,
+    step: Optional[int] = None,
+    margin: Optional[int] = 0,
+):
+    """
+    Processes the data and returns features.
+
+    Args:
+        queries: text sequences
+        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        tokenizer: such as AutoTokenizer
+
+    Returns:
+        all_input_ids: input ids for all tokens
+        all_segment_ids: token type ids
+        all_input_mask: attention mask to use for BERT model
+        all_subtokens_mask: masks out all subwords besides the first one
+        all_loss_mask: loss mask to mask out tokens during training
+        punct_all_labels: all labels for punctuation task (ints)
+        capit_all_labels: all labels for capitalization task (ints)
+        punct_label_ids: label (str) to id (int) map for punctuation task
+        capit_label_ids: label (str) to id (int) map for capitalization task
+    """
+    st = []
+    stm = []
+    sent_lengths = []
+
+    for i, query in enumerate(queries):
+        words = query.strip().split()
+
+        # add bos token
+        subtokens = []
+        subtokens_mask = []
+
+        for j, word in enumerate(words):
+            word_tokens = tokenizer.text_to_tokens(word)
+            subtokens.extend(word_tokens)
+
+            subtokens_mask.append(1)
+            subtokens_mask.extend([0] * (len(word_tokens) - 1))
+
+        # add eos token
+        sent_lengths.append(len(subtokens))
+        st.append(subtokens)
+        stm.append(subtokens_mask)
+
+    if max_seq_length is None:
+        max_seq_length = max(sent_lengths)
+    else:
+        max_seq_length = min(max_seq_length, max(sent_lengths))
+    logging.info(f'Max length: {max_seq_length}')
+    # Maximum number of word subtokens in segment. The first and the last tokens in segment are CLS and EOS
+    length = max_seq_length - 2
+    if margin >= length // 2:
+        raise ValueError(f"Parameter `margin` has to be less than `(max_seq_length - 2) // 2`. "
+                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
+                         f"margin={margin}, max_seq_length={max_seq_length}")
+    if step is None:
+        step = length - margin * 2
+    if step > length - margin * 2 or step <= 0:
+        raise ValueError(f"Parameter `step` has to be positive and less or equal to the difference "
+                         f"`max_seq_length - 2 - margin * 2`. "
+                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
+                         f"step={step} max_seq_length={max_seq_length} margin={margin}")
+    get_stats(sent_lengths)
+    all_input_ids = []
+    all_segment_ids = []
+    all_subtokens_mask = []
+    all_input_mask = []
+    all_quantities_of_preceding_words = []
+    all_query_ids = []
+    all_is_last = []
+    for q_i, query_st in enumerate(st):
+        q_input_ids = []
+        q_segment_ids = []
+        q_subtokens_mask = []
+        q_input_mask = []
+        q_quantities_of_preceding_words = []
+        for i in range(0, len(query_st) - length + step - 1, step):
+            subtokens = [tokenizer.cls_token] + st[q_i][i:i + length] + [tokenizer.sep_token]
+            q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
+            q_segment_ids.append([0] * (len(subtokens) + 2))
+            q_subtokens_mask.append([0] + stm[q_i][i:i + length] + [0])
+            q_input_mask.append([1] * (len(subtokens) + 2))
+            q_quantities_of_preceding_words.append(np.count_nonzero(stm[q_i][:i]))
+        all_input_ids.append(q_input_ids)
+        all_segment_ids.append(q_segment_ids)
+        all_subtokens_mask.append(q_subtokens_mask)
+        all_input_mask.append(q_input_mask)
+        all_quantities_of_preceding_words.append(q_quantities_of_preceding_words)
+        all_query_ids.append([q_i] * len(q_input_ids))
+        all_is_last.append([False] * (len(q_input_ids) - 1) + [True])
+    return (
+        list(itertools.chain(all_input_ids)),
+        list(itertools.chain(all_segment_ids)),
+        list(itertools.chain(all_input_mask)),
+        list(itertools.chain(all_subtokens_mask)),
+        list(itertools.chain(all_quantities_of_preceding_words)),
+        list(itertools.chain(all_query_ids)),
+        list(itertools.chain(all_is_last))
+    )
+
+
 class BertPunctuationCapitalizationInferDataset(Dataset):
     """
     Creates dataset to use during inference for punctuation and capitalization tasks with a pretrained model.
@@ -446,19 +608,48 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             'segment_ids': NeuralType(('B', 'T'), ChannelType()),
             'input_mask': NeuralType(('B', 'T'), MaskType()),
             'subtokens_mask': NeuralType(('B', 'T'), MaskType()),
+            'quantities_of_preceding_words': NeuralType(('B',), Index()),
+            'query_ids': NeuralType(('B',), Index()),
         }
 
-    def __init__(self, queries: List[str], max_seq_length: int, tokenizer: TokenizerSpec):
+    def __init__(
+        self,
+        queries: List[str],
+        tokenizer: TokenizerSpec,
+        max_seq_length: int = 128,
+        step: int = 32,
+        margin: int = 16
+    ):
         """ Initializes BertPunctuationCapitalizationInferDataset. """
-        features = get_features(queries=queries, max_seq_length=max_seq_length, tokenizer=tokenizer)
-
+        if step > max_seq_length:
+            raise ValueError(f"Dataset parameter `step` has to be less or equal to `max_seq_length`. "
+                             f"step={step} max_seq_length={max_seq_length}")
+        self.max_seq_length = max_seq_length
+        self.step = step
+        features = get_features_infer(
+            queries=queries, max_seq_length=max_seq_length, tokenizer=tokenizer, step=step, margin=margin
+        )
         self.all_input_ids = features[0]
         self.all_segment_ids = features[1]
         self.all_input_mask = features[2]
         self.all_subtokens_mask = features[3]
+        self.all_quantities_of_preceding_words = features[4]
+        self.all_query_ids = features[5]
+        self.all_is_last = features[6]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.all_input_ids)
+
+    def collate_fn(self, batch):
+        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids = zip(*batch)
+        return (
+            pad_sequence(input_ids, batch_first=True, padding_value=0),
+            pad_sequence(segment_ids, batch_first=True, padding_value=0),
+            pad_sequence(input_mask, batch_first=True, padding_value=0),
+            pad_sequence(subtokens_mask, batch_first=True, padding_value=0),
+            quantities_of_preceding_words,
+            query_ids,
+        )
 
     def __getitem__(self, idx):
         return (
@@ -466,4 +657,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             np.array(self.all_segment_ids[idx]),
             np.array(self.all_input_mask[idx], dtype=np.float32),
             np.array(self.all_subtokens_mask[idx]),
+            self.all_quantities_of_preceding_words[idx],
+            self.all_query_ids[idx],
+            self.all_is_last[idx],
         )
