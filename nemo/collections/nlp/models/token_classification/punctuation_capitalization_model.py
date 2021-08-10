@@ -467,7 +467,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
                     print("(add_punctuation_capitalization)q_i, b_punct_probs_i.shape, b_capit_probs_i.spape, acc_punct_probs[q_i].shape, acc_capit_probs[q_i].shape:", q_i, b_punct_probs_i.shape, b_capit_probs_i.shape, acc_punct_probs[q_i].shape if acc_punct_probs[q_i] is not None else None, acc_capit_probs[q_i].shape if acc_capit_probs[q_i] is not None else None)
                     print("(add_punctuation_capitalization)q_i, start_word_id:", q_i, start_word_id)
-                    print("(add_punctuation_capitalization)len(all_punct_preds), len(all_capit_preds):", len(all_punct_preds), len(all_capit_preds))
+                    print(f"(add_punctuation_capitalization)len(all_punct_preds[{q_i}]), len(all_capit_preds[{q_i}]):", len(all_punct_preds[q_i]), len(all_capit_preds[q_i]))
                     if acc_punct_probs[q_i] is None:
                         print("(add_punctuation_capitalization)acc is None")
                         acc_punct_probs[q_i] = b_punct_probs_i
