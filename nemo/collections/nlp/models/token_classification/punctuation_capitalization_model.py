@@ -358,6 +358,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         dataset = BertPunctuationCapitalizationInferDataset(
             tokenizer=self.tokenizer, queries=queries, max_seq_length=max_seq_length, step=step, margin=margin
         )
+        print("dataset length:", len(dataset))
 
         return torch.utils.data.DataLoader(
             dataset=dataset,
@@ -434,8 +435,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
             for batch in infer_datalayer:
                 input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
-                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print("subtokens_mask:", subtokens_mask)
+                print("subtokens_mask.shape:", subtokens_mask.shape)
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),

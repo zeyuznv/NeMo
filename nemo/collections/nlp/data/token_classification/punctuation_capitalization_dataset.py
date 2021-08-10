@@ -634,6 +634,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         self.all_quantities_of_preceding_words = features[4]
         self.all_query_ids = features[5]
         self.all_is_last = features[6]
+        print("self.all_input_ids sizes:", [len(inp) for inp in self.all_input_ids])
 
     def __len__(self) -> int:
         return len(self.all_input_ids)
