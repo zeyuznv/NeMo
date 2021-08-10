@@ -27,6 +27,7 @@ from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 from nemo.collections.nlp.data.data_utils.data_preprocessing import get_label_stats, get_stats
 from nemo.core.classes import Dataset
 from nemo.core.neural_types import ChannelType, Index, LabelsType, MaskType, NeuralType
+from nemo.core.neural_types.elements import BoolType
 from nemo.utils import logging
 
 
@@ -610,6 +611,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             'subtokens_mask': NeuralType(('B', 'T'), MaskType()),
             'quantities_of_preceding_words': NeuralType(('B',), Index()),
             'query_ids': NeuralType(('B',), Index()),
+            'is_last': NeuralType(('B',), BoolType())
         }
 
     def __init__(
@@ -641,7 +643,8 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         return len(self.all_input_ids)
 
     def collate_fn(self, batch):
-        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids = zip(*batch)
+        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
+            zip(*batch)
         return (
             pad_sequence(input_ids, batch_first=True, padding_value=0),
             pad_sequence(segment_ids, batch_first=True, padding_value=0),
@@ -649,6 +652,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             pad_sequence(subtokens_mask, batch_first=True, padding_value=0),
             quantities_of_preceding_words,
             query_ids,
+            is_last,
         )
 
     def __getitem__(self, idx):
