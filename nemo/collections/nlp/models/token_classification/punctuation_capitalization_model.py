@@ -465,7 +465,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
                 for i, (q_i, start_word_id, b_punct_probs_i, b_capit_probs_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
-                    print("q_i, b_punct_probs_i.shape, b_capit_probs_i.spape, acc_punct_probs[q_i].shape, acc_capit_probs[q_i].shape:", q_i, b_punct_probs_i.shape, b_capit_probs_i.shape, acc_punct_probs[q_i].shape, acc_capit_probs[q_i].shape)
+                    print("q_i, b_punct_probs_i.shape, b_capit_probs_i.spape, acc_punct_probs[q_i].shape, acc_capit_probs[q_i].shape:", q_i, b_punct_probs_i.shape, b_capit_probs_i.shape, acc_punct_probs[q_i].shape if acc_punct_probs[q_i] is not None else None, acc_capit_probs[q_i].shape if acc_capit_probs[q_i] is not None else None)
                     if acc_punct_probs[q_i] is None:
                         acc_punct_probs[q_i] = b_punct_probs_i
                         assert acc_capit_probs[q_i] is None
