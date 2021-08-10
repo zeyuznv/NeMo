@@ -394,7 +394,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         if not keep_left:
             tensor = tensor[margin_size:]
         if not keep_right:
-            tensor = tensor[:-margin_size]
+            tensor = tensor[:tensor.shape[0] - margin_size]
         return tensor
 
     def add_punctuation_capitalization(
