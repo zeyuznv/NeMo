@@ -641,6 +641,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     def collate_fn(self, batch):
         input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
             zip(*batch)
+        print("collating")
         return (
             pad_sequence([torch.tensor(x) for x in input_ids], batch_first=True, padding_value=0),
             pad_sequence([torch.tensor(x) for x in segment_ids], batch_first=True, padding_value=0),
