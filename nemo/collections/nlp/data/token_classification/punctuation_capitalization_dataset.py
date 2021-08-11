@@ -555,7 +555,6 @@ def get_features_infer(
     all_query_ids = []
     all_is_last = []
     for q_i, query_st in enumerate(st):
-        print("(get_features_infer)q_i:", q_i)
         q_input_ids = []
         q_segment_ids = []
         q_subtokens_mask = []
@@ -635,7 +634,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         self.all_quantities_of_preceding_words = features[4]
         self.all_query_ids = features[5]
         self.all_is_last = features[6]
-        print("self.all_input_ids sizes:", [len(inp) for inp in self.all_input_ids])
 
     def __len__(self) -> int:
         return len(self.all_input_ids)
