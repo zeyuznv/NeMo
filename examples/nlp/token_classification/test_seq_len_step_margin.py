@@ -22,7 +22,7 @@ def get_args():
     parser.add_argument("--output_dir", "-o", type=Path, required=True)
     parser.add_argument("--max_seq_length", "-l", nargs="+", type=int, default=[16, 32, 64, 128, 256, 512])
     parser.add_argument("--margin", "-m", nargs="+", type=int, default=[0, 1, 2, 4, 8, 16, 32])
-    parser.add_argument("--step", "-s", margs="+", type=int, default=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512])
+    parser.add_argument("--step", "-s", nargs="+", type=int, default=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512])
     args = parser.parse_args()
     args.labels = args.labels.expanduser()
     args.source_text = args.source_text.expanduser()
