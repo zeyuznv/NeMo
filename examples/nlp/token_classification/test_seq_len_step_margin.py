@@ -68,7 +68,7 @@ def text_to_labels(text):
 def plot(data, save_filename):
     save_filename.parent.mkdir(exist_ok=True, parents=True)
     for line_var, line_data in data["lines"].items():
-        plt.plot(line_data["x"], line_data["y"], label=f"{data['line_variable']}={line_var}")
+        plt.plot(line_data["x"], line_data["y"], label=f"{data['line_variable']}={line_var}", marker='o')
     plt.grid()
     plt.legend()
     plt.xlabel(data['xlabel'])
