@@ -90,24 +90,50 @@ def plot(data, save_filename):
 
 def save_all_plots(result, output_dir):
     for task, task_scores in result.items():
+        data_for_seq_len_fixed_plots = {}
         for margin, margin_scores in result[task]["margin"].items():
             any_step_value = list(result[task]["margin"][margin]["step"].keys())[0]
             series_names = set(result[task]["margin"][margin]["step"][any_step_value].keys())
             assert MAX_SEQ_LENGTH_KEY in series_names
             metrics = series_names - {MAX_SEQ_LENGTH_KEY}
             for m in metrics:
-                data_for_plot = {
+                data_for_margin_fixed_plot = {
                     "lines": {},
                     "xlabel": MAX_SEQ_LENGTH_KEY,
                     "ylabel": m,
                     "line_variable": "step"
                 }
                 for step in result[task]["margin"][margin]["step"].keys():
-                    data_for_plot["lines"][step] = {
+                    for i, msl in enumerate(result[task]["margin"][margin]["step"][step][MAX_SEQ_LENGTH_KEY]):
+                        init_value = {
+                             "lines": {
+                                 step: {
+                                     "x": [margin],
+                                     "y": [result[task]["margin"][margin]["step"][step][m][i]]
+                                 },
+                             },
+                             "xlabel": "margin",
+                             "ylabel": m,
+                             "line_variable": "step",
+                        }
+                        if msl not in data_for_seq_len_fixed_plots:
+                            data_for_seq_len_fixed_plots[msl] = {m: init_value}
+                        elif m not in data_for_seq_len_fixed_plots[msl]:
+                            data_for_seq_len_fixed_plots[msl][m] = init_value
+                        elif step not in data_for_seq_len_fixed_plots[msl][m]["lines"]:
+                            data_for_seq_len_fixed_plots[msl][m]["lines"][step] = init_value["lines"][step]
+                        else:
+                            data_for_seq_len_fixed_plots[msl][m]["lines"][step]['x'].append(margin)
+                            data_for_seq_len_fixed_plots[msl][m]["lines"][step]['x'].append(
+                                result[task]["margin"][margin]["step"][step][m][i])
+                    data_for_margin_fixed_plot["lines"][step] = {
                         "x": result[task]["margin"][margin]["step"][step][MAX_SEQ_LENGTH_KEY],
                         "y": result[task]["margin"][margin]["step"][step][m],
                     }
-                plot(data_for_plot, save_filename=output_dir / Path(f"{task}/margin{margin}/{m}.png"))
+                plot(data_for_margin_fixed_plot, save_filename=output_dir / Path(f"{task}/margin{margin}/{m}.png"))
+        for msl, msl_data in data_for_seq_len_fixed_plots.items():
+            for metric, metric_data in msl_data.items():
+                plot(metric_data, save_filename=output_dir / Path(f"{task}/max_seq_length{msl}/{metric}.png"))
 
 
 def get_best_metrics_and_parameters(result):
