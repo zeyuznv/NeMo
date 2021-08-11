@@ -25,7 +25,7 @@ def main():
         result[doc_id] = ""
         for i, seg in enumerate(doc.findAll("seg")):
             result[doc_id] += seg.text.strip() + '\n'
-    args.output_dir.parent.mkdir(parents=True, exist_ok=True)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     for doc_id, text in result.items():
         with (args.output_dir / Path(f"{doc_id}.txt")).open('w') as f:
             f.write(text)
