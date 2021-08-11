@@ -125,7 +125,7 @@ def save_all_plots(result, output_dir):
                             data_for_seq_len_fixed_plots[msl][m]["lines"][step] = init_value["lines"][step]
                         else:
                             data_for_seq_len_fixed_plots[msl][m]["lines"][step]['x'].append(margin)
-                            data_for_seq_len_fixed_plots[msl][m]["lines"][step]['x'].append(
+                            data_for_seq_len_fixed_plots[msl][m]["lines"][step]['y'].append(
                                 result[task]["margin"][margin]["step"][step][m][i])
                     data_for_margin_fixed_plot["lines"][step] = {
                         "x": result[task]["margin"][margin]["step"][step][MAX_SEQ_LENGTH_KEY],
@@ -154,6 +154,21 @@ def get_best_metrics_and_parameters(result):
     return best
 
 
+def make_margins_and_steps_integers(result):
+    fixed = deepcopy(result)
+    for task, task_result in result.items():
+        for margin, margin_result in task_result["margin"].items():
+            for step, step_result in margin_result["step"].items():
+                if isinstance(step, str):
+                    del fixed[task]["margin"][margin]["step"][step]
+                    fixed[task]["margin"][margin]["step"][int(step)] = step_result
+            if isinstance(margin, str):
+                backup = fixed[task]["margin"][margin]
+                del fixed[task]["margin"][margin]
+                fixed[task]["margin"][int(margin)] = backup
+    return fixed
+
+
 def main():
     args = get_args()
     with args.source_text.open() as f:
@@ -170,6 +185,7 @@ def main():
     else:
         with args.continue_from.open() as f:
             result = json.load(f)
+            result = make_margins_and_steps_integers(result)
         best = get_best_metrics_and_parameters(result)
     for max_seq_length, margin, step in product(args.max_seq_length, args.margin, args.step):
         dscr = f"max_seq_length={max_seq_length}, margin={margin}, step={step}"
