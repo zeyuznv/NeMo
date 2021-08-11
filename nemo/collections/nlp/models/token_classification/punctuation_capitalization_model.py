@@ -15,6 +15,7 @@
 import os
 from typing import Dict, List, Optional
 
+import numpy as np
 import onnx
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -375,14 +376,14 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             raise ValueError(f"Not enough accumulated probabilities. "
                              f"Number_of_probs_to_move={number_of_probs_to_move} acc_prob.shape={acc_prob.shape}")
         if number_of_probs_to_move > 0:
-            pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
+            pred = pred + list(np.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
         acc_prob = acc_prob[number_of_probs_to_move:]
         return pred, acc_prob
 
     @staticmethod
     def update_accumulated_probabilities(acc_prob, update):
         acc_prob *= update[:acc_prob.shape[0]]
-        acc_prob = torch.cat([acc_prob, update[acc_prob.shape[0]:]], dim=0)
+        acc_prob = np.concatenate([acc_prob, update[acc_prob.shape[0]:]], axis=0)
         return acc_prob
 
     @staticmethod
@@ -451,13 +452,13 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                         torch.nn.functional.softmax(
                             self.remove_margins(pl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
                             dim=-1,
-                        )
+                        ).detach().cpu().numpy()
                     )
                     b_capit_probs.append(
                         torch.nn.functional.softmax(
                             self.remove_margins(cl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
                             dim=-1,
-                        )
+                        ).detach().cpu().numpy()
                     )
 
                 for i, (q_i, start_word_id, b_punct_probs_i, b_capit_probs_i) in enumerate(
