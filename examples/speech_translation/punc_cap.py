@@ -81,15 +81,15 @@ def main():
     texts = [texts_to_process[talk_id] for talk_id in order]
     max_seq_len = 512
     processed = []
-    for text in texts:
-        segments = split_into_segments(text, max_seq_len)
-        processed_segments = model.add_punctuation_capitalization(segments, max_seq_length=max_seq_len)
-        processed.append(
-            LONG_NUMBER.sub(
-                insert_commas_in_long_numbers,
-                DECIMAL.sub(decimal_repl, SPACE_DEDUP.sub(' ', ' '.join(processed_segments))),
-            )
-        )
+    processed_texts = model.add_punctuation_capitalization(texts, max_seq_length=max_seq_len, step=64, margin=32)
+    for text in processed_texts:
+        processed.append(DECIMAL.sub(decimal_repl, SPACE_DEDUP.sub(' ', text)))
+        # processed.append(
+        #     LONG_NUMBER.sub(
+        #         insert_commas_in_long_numbers,
+        #         DECIMAL.sub(decimal_repl, SPACE_DEDUP.sub(' ', ' '.join(processed_segments))),
+        #     )
+        # )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('w') as f:
         for t in processed:
