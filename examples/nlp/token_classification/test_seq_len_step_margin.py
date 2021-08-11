@@ -113,7 +113,7 @@ def save_all_plots(result, output_dir):
 def get_best_metrics_and_parameters(result):
     best = deepcopy(EMPTY_BEST)
     for task, task_result in result.items():
-        for margin, margin_result in result["margin"].items():
+        for margin, margin_result in task_result["margin"].items():
             for step, step_result in margin_result["step"].items():
                 series_names = set(step_result.keys())
                 metric_names = series_names - {MAX_SEQ_LENGTH_KEY}
