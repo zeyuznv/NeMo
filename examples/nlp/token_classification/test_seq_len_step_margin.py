@@ -108,7 +108,10 @@ def main():
         "capitalization": {"margin": {}}
     }
     for max_seq_length, margin, step in product(args.max_seq_length, args.margin, args.step):
+        dscr = f"max_seq_length={max_seq_length}, margin={margin}, step={step}"
+        print(dscr)
         if step > max_seq_length - 2 - 2 * margin:
+            print(f"SKIPPING because parameter set {dscr} is impossible")
             continue
         try:
             processed = model.add_punctuation_capitalization(
@@ -119,6 +122,7 @@ def main():
                 step=step,
             )
         except ValueError:
+            print(f"SKIPPING because parameter set {dscr} is impossible")
             continue
         preds_text = text_to_labels('\n'.join(processed))
         scores = compute_scores(preds_text, labels_text)
