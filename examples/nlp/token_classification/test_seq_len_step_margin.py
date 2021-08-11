@@ -1,3 +1,6 @@
+import sys
+sys.path = ["/home/lab/NeMo"] + sys.path
+
 import json
 import re
 import string
