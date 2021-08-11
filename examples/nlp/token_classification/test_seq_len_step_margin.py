@@ -5,6 +5,7 @@ import json
 import re
 import string
 from argparse import ArgumentParser
+from copy import deepcopy
 from itertools import product
 from pathlib import Path
 
@@ -18,14 +19,22 @@ MAX_NUM_SUBTOKENS_IN_INPUT = 4092
 MAX_SEQ_LENGTH_KEY = "max_seq_length"
 
 
+BEST_INIT = {"metric": 0, MAX_SEQ_LENGTH_KEY: None, "margin": None, "step": None}
+EMPTY_BEST = {
+    "punctuation": {"f1_micro": BEST_INIT.copy(), "f1_macro": BEST_INIT.copy(), "accuracy": BEST_INIT.copy()},
+    "capitalization": {"f1": BEST_INIT.copy(), "accuracy": BEST_INIT.copy()}
+}
+
+
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--labels", "-b", type=Path, required=True)
     parser.add_argument("--source_text", "-t", type=Path, required=True)
     parser.add_argument("--output_dir", "-o", type=Path, required=True)
+    parser.add_argument("--continue_from", "-c", type=Path)
     parser.add_argument("--max_seq_length", "-l", nargs="+", type=int, default=[16, 32, 64, 128, 256, 512])
     parser.add_argument("--margin", "-m", nargs="+", type=int, default=[0, 1, 2, 4, 8, 16, 32])
-    parser.add_argument("--step", "-s", nargs="+", type=int, default=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512])
+    parser.add_argument("--step", "-s", nargs="+", type=int, default=[1, 2, 4, 8, 14, 30, 62, 126, 254, 510])
     args = parser.parse_args()
     args.labels = args.labels.expanduser()
     args.source_text = args.source_text.expanduser()
@@ -76,6 +85,7 @@ def plot(data, save_filename):
     plt.xscale('log')
     plt.tight_layout()
     plt.savefig(save_filename)
+    plt.clf()
 
 
 def save_all_plots(result, output_dir):
@@ -100,6 +110,23 @@ def save_all_plots(result, output_dir):
                 plot(data_for_plot, save_filename=output_dir / Path(f"{task}/margin{margin}/{m}.png"))
 
 
+def get_best_metrics_and_parameters(result):
+    best = deepcopy(EMPTY_BEST)
+    for task, task_result in result.items():
+        for margin, margin_result in result["margin"].items():
+            for step, step_result in margin_result["step"].items():
+                series_names = set(step_result.keys())
+                metric_names = series_names - {MAX_SEQ_LENGTH_KEY}
+                for metric in metric_names:
+                    for v, msl in zip(step_result[metric], step_result[MAX_SEQ_LENGTH_KEY]):
+                        if v > best[task][metric]["metric"]:
+                            best[task][metric]["metric"] = v
+                            best[task][metric][MAX_SEQ_LENGTH_KEY] = msl
+                            best[task][metric]["step"] = step
+                            best[task][metric]["margin"] = margin
+    return best
+
+
 def main():
     args = get_args()
     with args.source_text.open() as f:
@@ -107,10 +134,16 @@ def main():
     with args.labels.open() as f:
         labels_text = f.read()
     model = PunctuationCapitalizationModel.from_pretrained("punctuation_en_bert")
-    result = {
-        "punctuation": {"margin": {}},
-        "capitalization": {"margin": {}}
-    }
+    if args.continue_from is None:
+        result = {
+            "punctuation": {"margin": {}},
+            "capitalization": {"margin": {}}
+        }
+        best = deepcopy(EMPTY_BEST)
+    else:
+        with args.continue_from.open() as f:
+            result = json.load(f)
+        best = get_best_metrics_and_parameters(result)
     for max_seq_length, margin, step in product(args.max_seq_length, args.margin, args.step):
         dscr = f"max_seq_length={max_seq_length}, margin={margin}, step={step}"
         print(dscr)
@@ -142,9 +175,16 @@ def main():
                 step_dict[step][MAX_SEQ_LENGTH_KEY].append(max_seq_length)
                 for metric, value in scores[task].items():
                     step_dict[step][metric].append(value)
+                    if value > best[task][metric]["metric"]:
+                        best[task][metric]["metric"] = value
+                        best[task][metric][MAX_SEQ_LENGTH_KEY] = max_seq_length
+                        best[task][metric]["step"] = step
+                        best[task][metric]["margin"] = margin
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with (args.output_dir / Path("punctuation_capitalization_scores.json")).open('w') as f:
         json.dump(result, f, indent=2)
+    with (args.output_dir / Path("best_metrics_and_parameters.json")).open('w') as f:
+        json.dump(best, f, indent=2)
     save_all_plots(result, args.output_dir)
 
 
