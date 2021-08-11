@@ -73,6 +73,7 @@ def plot(data, save_filename):
     plt.legend()
     plt.xlabel(data['xlabel'])
     plt.ylabel(data['ylabel'])
+    plt.xscale('log')
     plt.tight_layout()
     plt.savefig(save_filename)
 
