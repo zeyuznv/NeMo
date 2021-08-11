@@ -259,7 +259,8 @@ def oh_repl(match):
 
 REPLACEMENTS = [
     (
-        re.compile('oh ' + '|'.join([rf'\b({str_num})\b' for str_num in list(TEXT_TO_NUMBERS.keys())[1:10]])),
+        re.compile(
+            r'oh \b(' + '|'.join([rf'\b{str_num}\b' for str_num in list(TEXT_TO_NUMBERS.keys())[1:10]]) + r')\b'),
         oh_repl,
     ),
     (
