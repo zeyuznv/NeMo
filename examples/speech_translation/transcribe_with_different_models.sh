@@ -1,25 +1,9 @@
 #!/usr/bin/bash
 set -e
 
-pretrained_ngc_not_only_segmented_data=(
-  QuartzNet15x5Base-En
-  stt_en_jasper10x5dr
-  stt_en_citrinet_256
-  stt_en_citrinet_512
-  stt_en_citrinet_1024
-  stt_en_citrinet_256_gamma_0_25
-  stt_en_citrinet_512_gamma_0_25
-  stt_en_citrinet_1024_gamma_0_25
-)
+pretrained_ngc_not_only_segmented_data=( stt_en_citrinet_1024 stt_en_citrinet_1024_gamma_0_25 )
 
-pretrained_ngc_only_segmented_data=(
-  stt_en_conformer_ctc_small
-  stt_en_conformer_ctc_medium
-  stt_en_conformer_ctc_large
-  stt_en_conformer_ctc_small_ls
-  stt_en_conformer_ctc_medium_ls
-  stt_en_conformer_ctc_large_ls
-)
+pretrained_ngc_only_segmented_data=( stt_en_conformer_ctc_large )
 
 
 nemo_asr_checkpoints_not_only_segmented_data=(
