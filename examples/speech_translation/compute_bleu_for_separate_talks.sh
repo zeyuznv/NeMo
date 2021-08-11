@@ -14,7 +14,7 @@ python xml_2_separate_files.py -i "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
 > "${scores}"
 
 for segmentation in $(ls "${translations_after_mwer}"); do
-  echo "${segmentation}" >> "${scores}"
+  echo "${segmentation:23}" >> "${scores}"
   for inp_length in $(ls "${translations_after_mwer}/${segmentation}"); do
     echo "    ${inp_length}" >> "${scores}"
     for tr_model in $(ls "${translations_after_mwer}/${segmentation}/${inp_length}"); do
