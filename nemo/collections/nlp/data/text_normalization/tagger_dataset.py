@@ -42,9 +42,9 @@ class TextNormalizationTaggerDataset(Dataset):
         tokenizer_name: name of the tokenizer,
         mode: should be one of the values ['tn', 'itn', 'joint'].  `tn` mode is for TN only. `itn` mode is for ITN only. `joint` is for training a system that can do both TN and ITN at the same time.
         do_basic_tokenize: a flag indicates whether to do some basic tokenization before using the tokenizer of the model
-        tagger_data_augmentation (bool): a flag indicates whether to augment the dataset with additional data instances
         lang: language of the dataset
-        use_cache: Enables caching to use pickle format to store and read data from
+        use_cache: Enables caching to use pickle format to store and read data from,
+        max_insts: Maximum number of instances (-1 means no limit)
     """
 
     def __init__(
@@ -54,19 +54,23 @@ class TextNormalizationTaggerDataset(Dataset):
         tokenizer_name: str,
         mode: str,
         do_basic_tokenize: bool,
-        tagger_data_augmentation: bool,
         lang: str,
         use_cache: bool = False,
+        max_insts: int = -1,
     ):
         assert mode in constants.MODES
         assert lang in constants.SUPPORTED_LANGS
         self.mode = mode
         self.lang = lang
         self.use_cache = use_cache
+        self.max_insts = max_insts
 
         # Get cache path
         data_dir, filename = os.path.split(input_file)
-        cached_data_file = os.path.join(data_dir, f'cached_tagger_{filename}_{tokenizer_name}_{lang}.pkl')
+        tokenizer_name_normalized = tokenizer_name.replace('/', '_')
+        cached_data_file = os.path.join(
+            data_dir, f'cached_tagger_{filename}_{tokenizer_name_normalized}_{lang}_{max_insts}.pkl'
+        )
 
         if use_cache and os.path.exists(cached_data_file):
             logging.warning(
@@ -77,8 +81,10 @@ class TextNormalizationTaggerDataset(Dataset):
                 data = pickle.load(f)
                 self.insts, self.tag2id, self.encodings, self.labels = data
         else:
-            # Read the input raw data file
+            # Read the input raw data file, returns list of sentences parsed as list of class, w_words, s_words
             raw_insts = read_data_file(input_file)
+            if max_insts >= 0:
+                raw_insts = raw_insts[:max_insts]
 
             # Convert raw instances to TaggerDataInstance
             insts = []
@@ -91,16 +97,6 @@ class TextNormalizationTaggerDataset(Dataset):
                     # Create a new TaggerDataInstance
                     inst = TaggerDataInstance(w_words, s_words, inst_dir, do_basic_tokenize)
                     insts.append(inst)
-                    # Data Augmentation (if enabled)
-                    if tagger_data_augmentation:
-                        filtered_w_words, filtered_s_words = [], []
-                        for ix, (w, s) in enumerate(zip(w_words, s_words)):
-                            if not s in constants.SPECIAL_WORDS:
-                                filtered_w_words.append(w)
-                                filtered_s_words.append(s)
-                        if len(filtered_s_words) > 1:
-                            inst = TaggerDataInstance(filtered_w_words, filtered_s_words, inst_dir)
-                            insts.append(inst)
 
             self.insts = insts
             texts = [inst.input_words for inst in insts]
@@ -119,7 +115,13 @@ class TextNormalizationTaggerDataset(Dataset):
                     data = self.insts, self.tag2id, self.encodings, self.labels
                     pickle.dump(data, out_file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
+        """
+        Args:
+            idx: item index
+        Returns:
+            item: dictionary with input_ids and attention_mask as dictionary keys and the tensors at given idx as values
+        """
         item = {key: val[idx] for key, val in self.encodings.items()}
         item['labels'] = self.labels[idx]
         return item
@@ -159,8 +161,8 @@ class TaggerDataInstance:
     This class represents a data instance in a TextNormalizationTaggerDataset.
 
     Args:
-        w_words: List of words in the written form
-        s_words: List of words in the spoken form
+        w_words: List of words in a sentence in the written form
+        s_words: List of words in a sentence in the spoken form
         direction: Indicates the direction of the instance (i.e., INST_BACKWARD for ITN or INST_FORWARD for TN).
         do_basic_tokenize: a flag indicates whether to do some basic tokenization before using the tokenizer of the model
     """
