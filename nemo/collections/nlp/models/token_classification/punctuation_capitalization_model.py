@@ -358,7 +358,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         dataset = BertPunctuationCapitalizationInferDataset(
             tokenizer=self.tokenizer, queries=queries, max_seq_length=max_seq_length, step=step, margin=margin
         )
-        print("dataset length:", len(dataset))
 
         return torch.utils.data.DataLoader(
             dataset=dataset,
