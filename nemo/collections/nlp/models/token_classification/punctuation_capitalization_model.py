@@ -372,21 +372,18 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
+        if number_of_probs_to_move > acc_prob.shape[0]:
+            raise ValueError(f"Not enough accumulated probabilities. "
+                             f"Number_of_probs_to_move={number_of_probs_to_move} acc_prob.shape={acc_prob.shape}")
         if number_of_probs_to_move > 0:
-            print("(move_from_accumulated_probabilities_to_token_predictions)acc_prob.shape:", acc_prob.shape)
-            print("(move_from_accumulated_probabilities_to_token_predictions)number_of_probs_to_move:", number_of_probs_to_move)
             pred = pred + tensor2list(torch.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
-        else:
-            print("(move_from_accumulated_probabilities_to_token_predictions)acc_prob.shape:", acc_prob.shape)
         acc_prob = acc_prob[number_of_probs_to_move:]
         return pred, acc_prob
 
     @staticmethod
     def update_accumulated_probabilities(acc_prob, update):
-        print("(update_accumulated_probabilities)acc_prob.shape, update.shape:", acc_prob.shape, update.shape)
         acc_prob *= update[:acc_prob.shape[0]]
         acc_prob = torch.cat([acc_prob, update[acc_prob.shape[0]:]], dim=0)
-        print("(update_accumulated_probabilities)acc_prob.shape:", acc_prob.shape)
         return acc_prob
 
     @staticmethod
@@ -437,14 +434,11 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
             for batch in infer_datalayer:
                 input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
-                print("(add_punctuation_capitalization)subtokens_mask.shape:", subtokens_mask.shape)
-                print("(add_punctuation_capitalization)input_ids.shape:", input_ids.shape)
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
-                print("(add_punctuation_capitalization)punct_logits.shape, capit_logits.shape:", punct_logits.shape, capit_logits.shape)
                 subtokens_mask = subtokens_mask > 0.5
                 b_punct_probs, b_capit_probs = [], []
                 start_word_ids = list(start_word_ids)
@@ -469,16 +463,11 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
                 for i, (q_i, start_word_id, b_punct_probs_i, b_capit_probs_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
-                    print("(add_punctuation_capitalization)q_i, b_punct_probs_i.shape, b_capit_probs_i.spape, acc_punct_probs[q_i].shape, acc_capit_probs[q_i].shape:", q_i, b_punct_probs_i.shape, b_capit_probs_i.shape, acc_punct_probs[q_i].shape if acc_punct_probs[q_i] is not None else None, acc_capit_probs[q_i].shape if acc_capit_probs[q_i] is not None else None)
-                    print("(add_punctuation_capitalization)q_i, start_word_id:", q_i, start_word_id)
-                    print(f"(add_punctuation_capitalization)len(all_punct_preds[{q_i}]), len(all_capit_preds[{q_i}]):", len(all_punct_preds[q_i]), len(all_capit_preds[q_i]))
                     if acc_punct_probs[q_i] is None:
-                        print("(add_punctuation_capitalization)acc is None")
                         acc_punct_probs[q_i] = b_punct_probs_i
                         assert acc_capit_probs[q_i] is None
                         acc_capit_probs[q_i] = b_capit_probs_i
                     else:
-                        print("(add_punctuation_capitalization)acc is not None")
                         all_punct_preds[q_i], acc_punct_probs[q_i] = \
                             self.move_from_accumulated_probabilities_to_token_predictions(
                                 all_punct_preds[q_i], acc_punct_probs[q_i], start_word_id - len(all_punct_preds[q_i]))
@@ -505,8 +494,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             for i, query in enumerate(queries):
                 punct_preds = all_punct_preds[i]
                 capit_preds = all_capit_preds[i]
-                print("(add_punctuation_capitalization)query:", query)
-                print("(add_punctuation_capitalization)punct_preds:", punct_preds)
                 assert len(query) == len(punct_preds), f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}"
                 assert len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}"
                 query_with_punct_and_capit = ''
