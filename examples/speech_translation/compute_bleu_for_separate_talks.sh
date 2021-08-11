@@ -6,6 +6,7 @@ output_dir="${workdir}/BLEU_by_docs"
 scores="${output_dir}/scores.txt"
 references="${output_dir}/references"
 doc_translations="${output_dir}/doc_translations"
+translations_after_mwer="${output_dir}/mwerSegmenter"
 
 python xml_2_separate_files.py -i "${workdir}/IWSLT.TED.tst2019.en-de.de.xml" \
   -o "${references}"
