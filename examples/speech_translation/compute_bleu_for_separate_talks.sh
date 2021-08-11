@@ -30,7 +30,7 @@ for segmentation in $(ls "${translations_after_mwer}"); do
               -m bleu \
               -b \
               -w 4)
-            echo "                ${doc_file%.*} $(bleu)" >> "${scores}"
+            echo "                ${doc_file%.*} ${bleu}" >> "${scores}"
           done
         fi
       done
