@@ -43,12 +43,12 @@ def compute_scores(preds_text, labels_text):
     return {
         "punctuation": {
             "accuracy": accuracy_score(punct_labels, punct_preds),
-            "f1": f1_score(punct_labels, punct_preds)
+            "f1_micro": f1_score(punct_labels, punct_preds, average="micro"),
+            "f1_macro": f1_score(punct_labels, punct_preds, average="macro"),
         },
         "capitalization": {
             "accuracy": accuracy_score(capit_labels, capit_preds),
-            "f1_micro": f1_score(capit_labels, capit_preds, average="micro"),
-            "f1_macro": f1_score(capit_labels, capit_preds, average="macro"),
+            "f1": f1_score(capit_labels, capit_preds),
         }
     }
 
