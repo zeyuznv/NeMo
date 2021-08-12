@@ -280,8 +280,8 @@ REPLACEMENTS = [
         ten_power_3n_repl
     ),
     (re.compile(r"(?<![0-9] )\b([12][0-9]) ([0-9]{2})(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
-    (re.compile(r"(?:[0-9]+|0) point(?: [0-9])+", flags=re.I), decimal_repl),  # before replacing single digits parse decimals
-    (re.compile(r"(?<!\.)\b[0-9]\b", flags=re.I), single_number_to_str_repl),
+    (re.compile(r"(?:[0-9]+) point(?: [0-9])+", flags=re.I), decimal_repl),  # before replacing single digits parse decimals
+    (re.compile(r"(?<!\.)\b[0-9]\b(?!\.)", flags=re.I), single_number_to_str_repl),
     (re.compile(r"(?:[1-9][0-9]*|0)\.[0-9]*[1-9]"), decimal_deparse_repl),
     (re.compile(r"\s+", flags=re.I), " "),
     (
