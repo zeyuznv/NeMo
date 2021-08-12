@@ -15,7 +15,7 @@ from nemo.collections.nlp.models import PunctuationCapitalizationModel
 from score_punctuation_evaluation import PUNCT_LABELS_TO_NUMBERS, compute_scores
 
 
-MAX_NUM_SUBTOKENS_IN_INPUT = 4092
+MAX_NUM_SUBTOKENS_IN_INPUT = 8184
 MAX_SEQ_LENGTH_KEY = "max_seq_length"
 
 
