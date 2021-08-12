@@ -128,14 +128,10 @@ def _fixed_seq_collate_fn(self, batch):
         if has_audio:
             sig_len = sig_len.item()
             chunck_len = sig_len - fixed_length
-
             if chunck_len < 0:
-                repeat = fixed_length // sig_len
-                rem = fixed_length % sig_len
-                sub = sig[-rem:] if rem > 0 else torch.tensor([])
-                rep_sig = torch.cat(repeat * [sig])
-                signal = torch.cat((rep_sig, sub))
-                new_audio_lengths.append(torch.tensor(fixed_length))
+                pad = (0,chunck_len)
+                signal = torch.nnn.functional.pad(sig,pad)
+                new_audio_lengths.append(torch.tensor(sig_len))
             else:
                 start_idx = torch.randint(0, chunck_len, (1,)) if chunck_len else torch.tensor(0)
                 end_idx = start_idx + fixed_length
