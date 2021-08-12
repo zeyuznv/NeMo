@@ -30,6 +30,14 @@ def load_wer(dir_):
     return result
 
 
+def is_int(s):
+    try:
+        int(s)
+    except ValueError:
+        return False
+    return True
+
+
 def main():
     args = get_args()
     with args.bleu.open() as f:
@@ -39,7 +47,10 @@ def main():
     wer = load_wer(args.wer_dir)
     order = list(wer[args.keys[0]][args.keys[3]].keys())
     for doc_id in order:
-        print(bleu[args.keys[0]][args.keys[1]][args.keys[2]][args.keys[3]][doc_id])
+        print(doc_id)
+    for doc_id in order:
+        if is_int(doc_id):
+            print(bleu[args.keys[0]][args.keys[1]][args.keys[2]][args.keys[3]][int(doc_id)])
 
 
 if __name__ == "__main__":
