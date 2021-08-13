@@ -74,10 +74,10 @@ def get_talk_id_to_text(text):
 def get_talk_id_to_audio_length(audio_dir):
     result = {}
     for elem in audio_dir.iterdir():
-        if elem.is_file() and str(elem).endswith('.wav'):
+        match = TALK_ID_COMPILED_PATTERN.search(str(elem))
+        if elem.is_file() and match is not None:
             audio = AudioSegment.from_wav(elem)
-            talk_id = TALK_ID_COMPILED_PATTERN.search(str(elem))
-            result[talk_id] = audio.duration_seconds
+            result[match.group(0)] = audio.duration_seconds
     return result
 
 
@@ -87,7 +87,7 @@ def main():
         text = f.read()
     talk_id_to_text = get_talk_id_to_text(text)
     talk_id_to_seconds = get_talk_id_to_audio_length(args.audio_dir)
-    for talk_id in args.order:
+    for talk_id in args.talk_order:
         print(len(talk_id_to_text[talk_id]) / talk_id_to_seconds[talk_id] * 60)
 
 
