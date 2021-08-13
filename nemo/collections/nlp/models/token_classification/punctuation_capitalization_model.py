@@ -388,9 +388,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def remove_margins(tensor, margin_size, keep_left, keep_right):
-        print("(remove_margins)tensor.shape:", tensor.shape)
-        print("(remove_margins)margin_size:", margin_size)
-        print("(remove_margins)keep_left, keep_right:", keep_left, keep_right)
         if not keep_left:
             tensor = tensor[margin_size + 1:]  # remove left margin and CLS token
         if not keep_right:
@@ -416,7 +413,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             if punct_label != self._cfg.dataset.pad_label:
                 query_with_punct_and_capit += punct_label
             query_with_punct_and_capit += ' '
-        return query_with_punct_and_capit
+        return query_with_punct_and_capit[:-1]
 
     def transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
             self,
@@ -434,7 +431,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         start_word_ids = list(start_word_ids)
         for i, (last, q_i, pl, cl, stm) in enumerate(
                 zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
-            print("stm non count non zero:", stm.count_nonzero())
             if not is_first_segment_in_query[q_i]:
                 start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
             stm = self.remove_margins(stm, margin, keep_left=is_first_segment_in_query[q_i], keep_right=last)
@@ -478,7 +474,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         try:
             self.eval()
             self = self.to(device)
-            print("query lengths:", [len(q) for q in queries])
             infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length, step, margin)
 
             # store predictions for all queries in a single list
@@ -491,7 +486,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
-                print("punct_logits.shape:", punct_logits.shape)
                 b_punct_probs, b_capit_probs = self.transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
                     punct_logits,
                     capit_logits,
@@ -502,7 +496,6 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     query_ids,
                     [not p for p in all_punct_preds],
                 )
-                print("b_punct_probs.shape:", [p.shape for p in b_punct_probs])
                 for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
                     for all_preds, acc_probs, b_probs_i in [

@@ -495,9 +495,6 @@ def get_features_infer(
     sent_lengths = []
     for i, query in enumerate(queries):
         subtokens, subtokens_mask = get_subtokens_and_subtokens_mask(query, tokenizer)
-        if query == "a":
-            print("subtokens('a'):", subtokens)
-            print("subtokens_mask('a'):", subtokens_mask)
         sent_lengths.append(len(subtokens))
         st.append(subtokens)
         stm.append(subtokens_mask)
@@ -513,8 +510,6 @@ def get_features_infer(
     for q_i, query_st in enumerate(st):
         q_input_ids, q_segment_ids, q_subtokens_mask, q_input_mask, q_quantities_of_preceding_words = [], [], [], [], []
         for i in range(0, max(len(query_st), length) - length + step, step):
-            if queries[q_i] == "a":
-                print(f"Creating segment {i} for query 'a'. query_st={query_st}, length={length}, step={step}")
             subtokens = [tokenizer.cls_token] + query_st[i:i + length] + [tokenizer.sep_token]
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
             q_segment_ids.append([0] * len(subtokens))
