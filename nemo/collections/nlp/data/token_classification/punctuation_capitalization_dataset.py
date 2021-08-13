@@ -460,8 +460,8 @@ def check_max_seq_length_and_margin_and_step(max_seq_length, margin, step):
     if step <= 0:
         raise ValueError(f"Parameter `step` has to be positive whereas step={step}")
     if step > max_seq_length - 2 - 2 * margin:
-        logging.warning(f"Parameter step={step} is too big. When needed to will be reduced to "
-                        f"`max_seq_length - 2 - 2 * margin = {max_seq_length - 2 - 2 * margin}`.")
+        logging.warning(f"Parameter step={step} is too big. It will be reduced to "
+                        f"`min(max_seq_length, <maximum query length> + 2) - 2 - 2 * margin`.")
 
 
 def get_features_infer(

@@ -484,6 +484,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
+                print("punct_logits.shape:", punct_logits.shape)
                 b_punct_probs, b_capit_probs = self.transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
                     punct_logits,
                     capit_logits,
@@ -492,7 +493,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     margin,
                     is_last,
                     query_ids,
-                    [not bool(p) for p in all_punct_preds],
+                    [not p for p in all_punct_preds],
                 )
                 for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
