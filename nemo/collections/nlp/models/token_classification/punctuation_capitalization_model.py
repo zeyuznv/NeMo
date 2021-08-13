@@ -434,6 +434,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         start_word_ids = list(start_word_ids)
         for i, (last, q_i, pl, cl, stm) in enumerate(
                 zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
+            print("stm non count non zero:", stm.count_nonzero())
             if not is_first_segment_in_query[q_i]:
                 start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
             stm = self.remove_margins(stm, margin, keep_left=is_first_segment_in_query[q_i], keep_right=last)
