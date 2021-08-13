@@ -388,6 +388,9 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def remove_margins(tensor, margin_size, keep_left, keep_right):
+        print("(remove_margins)tensor.shape:", tensor.shape)
+        print("(remove_margins)magin_size:", margin_size)
+        print("(remove_margins)keep_left, keep_right:", keep_left, keep_right)
         if not keep_left:
             tensor = tensor[margin_size + 1:]  # remove left margin and CLS token
         if not keep_right:
@@ -472,6 +475,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         try:
             self.eval()
             self = self.to(device)
+            print("query lengths:", [len(q) for q in queries])
             infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length, step, margin)
 
             # store predictions for all queries in a single list
