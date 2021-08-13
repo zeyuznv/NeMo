@@ -512,7 +512,7 @@ def get_features_infer(
     all_quantities_of_preceding_words, all_query_ids, all_is_last = [], [], []
     for q_i, query_st in enumerate(st):
         q_input_ids, q_segment_ids, q_subtokens_mask, q_input_mask, q_quantities_of_preceding_words = [], [], [], [], []
-        for i in range(0, len(query_st) - length + step, step):
+        for i in range(0, max(len(query_st), length) - length + step, step):
             if queries[q_i] == "a":
                 print(f"Creating segment {i} for query 'a'. query_st={query_st}, length={length}, step={step}")
             subtokens = [tokenizer.cls_token] + query_st[i:i + length] + [tokenizer.sep_token]
