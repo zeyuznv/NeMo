@@ -130,7 +130,7 @@ def _fixed_seq_collate_fn(self, batch):
             chunck_len = sig_len - fixed_length
             if chunck_len < 0:
                 pad = (0,chunck_len)
-                signal = torch.nnn.functional.pad(sig,pad)
+                signal = torch.nn.functional.pad(sig,pad)
                 new_audio_lengths.append(torch.tensor(sig_len))
             else:
                 start_idx = torch.randint(0, chunck_len, (1,)) if chunck_len else torch.tensor(0)
