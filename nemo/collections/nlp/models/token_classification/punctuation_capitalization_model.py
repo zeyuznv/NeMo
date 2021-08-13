@@ -399,8 +399,10 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     def apply_punctuation_and_capitalization_predictions(self, query, punct_preds, capit_preds):
         query = query.strip().split()
-        assert len(query) == len(punct_preds), f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}"
-        assert len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}"
+        assert len(query) == len(punct_preds), \
+            f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}, query[:10]={query[:10]}"
+        assert \
+            len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}, query[:10]={query[:10]}"
         punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
         capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
         query_with_punct_and_capit = ''
