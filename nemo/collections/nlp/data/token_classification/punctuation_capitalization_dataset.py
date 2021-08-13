@@ -425,49 +425,6 @@ class BertPunctuationCapitalizationDataset(Dataset):
         )
 
 
-def split_into_overlapping_segments(seq, length, step, subtokens_mask, pad_value):
-    result = []
-    i = 0
-    if not subtokens_mask[0]:
-        logging.warning("The zeroth element of subtokens mask is zero. It is unexpected since the first subtoken of a "
-                        "word has to have mask 1. The zeroth segment starts in the middle of a word. "
-                        "This may affect performance.")
-    while i + length < len(seq):
-        end_of_segment = None
-        for j in range(0, length):
-            if subtokens_mask[i + length - j]:
-                end_of_segment = i + length - j
-                break
-        if end_of_segment is None:
-            logging.warning(f"Entire segment from {i} to {i + length} is inside 1 word. The segment ends in the "
-                            f"middle of a word. This may affect performance.")
-            result.append(seq[i:i + length])
-        else:
-            result.append(seq[i:end_of_segment] + [pad_value] * (end_of_segment - i))
-        beginning_of_next_segment = None
-        for j in range(0, step):
-            if subtokens_mask[i + step - j]:
-                beginning_of_next_segment = i + step - j
-                break
-        if beginning_of_next_segment is None:
-            logging.warning(f"Could not make a step {step}. Entire step is inside 1 word. Increasing step to the "
-                            f"beginning of next word.")
-            for j in range(step, length):
-                if subtokens_mask[i + j]:
-                    beginning_of_next_segment = i + j
-                    break
-            if beginning_of_next_segment is None:
-                logging.warning(f"Entire segment from {i} to {i + length} is inside 1 word. The next segment starts in "
-                                f"the middle of a word. This may affect performance. Step will be increased to the "
-                                f"length of the segment.")
-                i += length
-            else:
-                i = beginning_of_next_segment
-        else:
-            i = beginning_of_next_segment
-    return result
-
-
 def find_idx_of_first_nonzero(stm, start, max_, left):
     if left:
         end = start - max_
@@ -481,6 +438,30 @@ def find_idx_of_first_nonzero(stm, start, max_, left):
             result = i
             break
     return result
+
+
+def get_subtokens_and_subtokens_mask(query, tokenizer):
+    words = query.strip().split()
+    subtokens = []
+    subtokens_mask = []
+    for j, word in enumerate(words):
+        word_tokens = tokenizer.text_to_tokens(word)
+        subtokens.extend(word_tokens)
+        subtokens_mask.append(1)
+        subtokens_mask.extend([0] * (len(word_tokens) - 1))
+    return subtokens, subtokens_mask
+
+
+def check_max_seq_length_and_margin_and_step(max_seq_length, margin, step):
+    if margin >= (max_seq_length - 2) // 2 and margin > 0 or margin < 0:
+        raise ValueError(f"Parameter `margin` has to not negative be less than `(max_seq_length - 2) // 2`. "
+                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
+                         f"margin={margin}, max_seq_length={max_seq_length}")
+    if step <= 0:
+        raise ValueError(f"Parameter `step` has to be positive whereas step={step}")
+    if step > max_seq_length - 2 - 2 * margin:
+        logging.warning(f"Parameter step={step} is too big. When needed to will be reduced to "
+                        f"`max_seq_length - 2 - 2 * margin = {max_seq_length - 2 - 2 * margin}`.")
 
 
 def get_features_infer(
@@ -512,54 +493,22 @@ def get_features_infer(
     st = []
     stm = []
     sent_lengths = []
-
     for i, query in enumerate(queries):
-        words = query.strip().split()
-
-        # add bos token
-        subtokens = []
-        subtokens_mask = []
-
-        for j, word in enumerate(words):
-            word_tokens = tokenizer.text_to_tokens(word)
-            subtokens.extend(word_tokens)
-
-            subtokens_mask.append(1)
-            subtokens_mask.extend([0] * (len(word_tokens) - 1))
-
-        # add eos token
+        subtokens, subtokens_mask = get_subtokens_and_subtokens_mask(query, tokenizer)
         sent_lengths.append(len(subtokens))
         st.append(subtokens)
         stm.append(subtokens_mask)
-
-    if margin >= (max_seq_length - 2) // 2 and margin > 0 or margin < 0:
-        raise ValueError(f"Parameter `margin` has to not negative be less than `(max_seq_length - 2) // 2`. "
-                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
-                         f"margin={margin}, max_seq_length={max_seq_length}")
-    if step <= 0:
-        raise ValueError(f"Parameter `step` has to be positive whereas step={step}")
-    if step > max_seq_length - 2 - 2 * margin:
-        logging.warning(f"Parameter step={step} is too big. When needed to will be reduced to "
-                        f"`max_seq_length - 2 - 2 * margin = {max_seq_length - 2 - 2 * margin}`.")
+    check_max_seq_length_and_margin_and_step(max_seq_length, margin, step)
     max_seq_length = min(max_seq_length, max(sent_lengths) + 2)
     logging.info(f'Max length: {max_seq_length}')
     # Maximum number of word subtokens in segment. The first and the last tokens in segment are CLS and EOS
     length = max_seq_length - 2
     step = min(length - margin * 2, step)
     get_stats(sent_lengths)
-    all_input_ids = []
-    all_segment_ids = []
-    all_subtokens_mask = []
-    all_input_mask = []
-    all_quantities_of_preceding_words = []
-    all_query_ids = []
-    all_is_last = []
+    all_input_ids, all_segment_ids, all_subtokens_mask, all_input_mask, all_input_mask = [], [], [], [], []
+    all_quantities_of_preceding_words, all_query_ids, all_is_last = [], [], []
     for q_i, query_st in enumerate(st):
-        q_input_ids = []
-        q_segment_ids = []
-        q_subtokens_mask = []
-        q_input_mask = []
-        q_quantities_of_preceding_words = []
+        q_input_ids, q_segment_ids, q_subtokens_mask, q_input_mask, q_quantities_of_preceding_words = [], [], [], [], []
         for i in range(0, len(query_st) - length + step, step):
             subtokens = [tokenizer.cls_token] + query_st[i:i + length] + [tokenizer.sep_token]
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
