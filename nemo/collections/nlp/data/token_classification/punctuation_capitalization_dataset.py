@@ -495,6 +495,9 @@ def get_features_infer(
     sent_lengths = []
     for i, query in enumerate(queries):
         subtokens, subtokens_mask = get_subtokens_and_subtokens_mask(query, tokenizer)
+        if query == "a":
+            print("subtokens('a'):", subtokens)
+            print("subtokens_mask('a'):", subtokens_mask)
         sent_lengths.append(len(subtokens))
         st.append(subtokens)
         stm.append(subtokens_mask)

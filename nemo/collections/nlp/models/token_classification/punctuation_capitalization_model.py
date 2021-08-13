@@ -389,7 +389,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
     @staticmethod
     def remove_margins(tensor, margin_size, keep_left, keep_right):
         print("(remove_margins)tensor.shape:", tensor.shape)
-        print("(remove_margins)magin_size:", margin_size)
+        print("(remove_margins)margin_size:", margin_size)
         print("(remove_margins)keep_left, keep_right:", keep_left, keep_right)
         if not keep_left:
             tensor = tensor[margin_size + 1:]  # remove left margin and CLS token
