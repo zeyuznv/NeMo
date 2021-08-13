@@ -12,6 +12,8 @@ LONG_NUMBER = re.compile(r"[1-9][0-9]{3,}")
 PUNCTUATION = re.compile("[.,?]")
 DECIMAL = re.compile(f"[0-9]+{PUNCTUATION.pattern}? point({PUNCTUATION.pattern}? [0-9])+", flags=re.I)
 
+MAX_NUM_SUBTOKENS_IN_INPUT = 8184
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -79,10 +81,10 @@ def main():
     order = get_talk_id_order(args.manifest_to_align_with)
     texts_to_process = load_manifest_text(args.manifest_pred, "pred_text")
     texts = [texts_to_process[talk_id] for talk_id in order]
-    max_seq_len = 512
+    max_seq_len = 64
     processed = []
     processed_texts = model.add_punctuation_capitalization(
-        texts, batch_size=4, max_seq_length=max_seq_len, step=32, margin=32)
+        texts, batch_size=MAX_NUM_SUBTOKENS_IN_INPUT // max_seq_len, max_seq_length=max_seq_len, step=8, margin=16)
     for text in processed_texts:
         processed.append(DECIMAL.sub(decimal_repl, SPACE_DEDUP.sub(' ', text)))
         # processed.append(
