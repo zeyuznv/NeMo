@@ -400,9 +400,9 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
     def apply_punctuation_and_capitalization_predictions(self, query, punct_preds, capit_preds):
         query = query.strip().split()
         assert len(query) == len(punct_preds), \
-            f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}, query[:10]={query[:10]}"
-        assert \
-            len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}, query[:10]={query[:10]}"
+            f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}, query[:30]={query[:30]}"
+        assert len(query) == len(capit_preds), \
+            f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}, query[:30]={query[:30]}"
         punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
         capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
         query_with_punct_and_capit = ''
@@ -501,6 +501,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     query_ids,
                     [not p for p in all_punct_preds],
                 )
+                print("b_punct_probs.shape:", [p.shape for p in b_punct_probs])
                 for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
                     for all_preds, acc_probs, b_probs_i in [
