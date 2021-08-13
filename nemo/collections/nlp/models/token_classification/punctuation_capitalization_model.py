@@ -394,6 +394,55 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             tensor = tensor[:tensor.shape[0] - margin_size]
         return tensor
 
+    def apply_punctuation_and_capitalization_predictions(self, query, punct_preds, capit_preds):
+        query = query.strip().split()
+        assert len(query) == len(punct_preds), f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}"
+        assert len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}"
+        punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
+        capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
+        query_with_punct_and_capit = ''
+        for j, word in enumerate(query):
+            punct_label = punct_ids_to_labels[punct_preds[j]]
+            capit_label = capit_ids_to_labels[capit_preds[j]]
+
+            if capit_label != self._cfg.dataset.pad_label:
+                word = word.capitalize()
+            query_with_punct_and_capit += word
+            if punct_label != self._cfg.dataset.pad_label:
+                query_with_punct_and_capit += punct_label
+            query_with_punct_and_capit += ' '
+        return query_with_punct_and_capit
+
+    def transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
+            self,
+            punct_logits,
+            capit_logits,
+            subtokens_mask,
+            start_word_ids,
+            margin,
+            is_last,
+            query_ids,
+            is_first_segment_in_query,
+    ):
+        subtokens_mask = subtokens_mask > 0.5
+        b_punct_probs, b_capit_probs = [], []
+        start_word_ids = list(start_word_ids)
+        for i, (last, q_i, pl, cl, stm) in enumerate(
+                zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
+            if not is_first_segment_in_query[q_i]:
+                start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
+            stm = self.remove_margins(stm, margin, keep_left=is_first_segment_in_query[q_i], keep_right=last)
+            for b_probs, logits in [(b_punct_probs, pl), (b_capit_probs, cl)]:
+                b_probs.append(
+                    torch.nn.functional.softmax(
+                        self.remove_margins(
+                            logits, margin, keep_left=is_first_segment_in_query[q_i], keep_right=last
+                        )[stm],
+                        dim=-1,
+                    ).detach().cpu().numpy()
+                )
+        return b_punct_probs, b_capit_probs
+
     def add_punctuation_capitalization(
         self, queries: List[str], batch_size: int = None, max_seq_length: int = 512, step: int = 128, margin: int = 32
     ) -> List[str]:
@@ -411,27 +460,17 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         if batch_size is None:
             batch_size = len(queries)
             logging.info(f'Using batch size {batch_size} for inference')
-
-        # We will store the output here
         result = []
-
-        # Model's mode and device
         mode = self.training
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         try:
-            # Switch model to evaluation mode
             self.eval()
             self = self.to(device)
-
             infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length, step, margin)
 
             # store predictions for all queries in a single list
-            all_punct_preds = [[] for _ in queries]
-            all_capit_preds = [[] for _ in queries]
-
-            acc_punct_probs = [None for _ in queries]
-            acc_capit_probs = [None for _ in queries]
-
+            all_punct_preds, all_capit_preds = [[] for _ in queries], [[] for _ in queries]
+            acc_punct_probs, acc_capit_probs = [None for _ in queries], [None for _ in queries]
             for batch in infer_datalayer:
                 input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
                 punct_logits, capit_logits = self.forward(
@@ -439,76 +478,39 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
-                subtokens_mask = subtokens_mask > 0.5
-                b_punct_probs, b_capit_probs = [], []
-                start_word_ids = list(start_word_ids)
-                for i, (last, q_i, pl, cl, stm) in enumerate(
-                        zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
-                    if_first_segment_in_query = not all_punct_preds[q_i]
-                    if not if_first_segment_in_query:
-                        start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
-                    stm = self.remove_margins(stm, margin, keep_left=if_first_segment_in_query, keep_right=last)
-                    b_punct_probs.append(
-                        torch.nn.functional.softmax(
-                            self.remove_margins(pl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
-                            dim=-1,
-                        ).detach().cpu().numpy()
-                    )
-                    b_capit_probs.append(
-                        torch.nn.functional.softmax(
-                            self.remove_margins(cl, margin, keep_left=not all_punct_preds[q_i], keep_right=last)[stm],
-                            dim=-1,
-                        ).detach().cpu().numpy()
-                    )
-
-                for i, (q_i, start_word_id, b_punct_probs_i, b_capit_probs_i) in enumerate(
+                b_punct_probs, b_capit_probs = self.transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
+                    punct_logits,
+                    capit_logits,
+                    subtokens_mask,
+                    start_word_ids,
+                    margin,
+                    is_last,
+                    query_ids,
+                    [not bool(p) for p in all_punct_preds],
+                )
+                for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
-                    if acc_punct_probs[q_i] is None:
-                        acc_punct_probs[q_i] = b_punct_probs_i
-                        assert acc_capit_probs[q_i] is None
-                        acc_capit_probs[q_i] = b_capit_probs_i
-                    else:
-                        all_punct_preds[q_i], acc_punct_probs[q_i] = \
-                            self.move_from_accumulated_probabilities_to_token_predictions(
-                                all_punct_preds[q_i], acc_punct_probs[q_i], start_word_id - len(all_punct_preds[q_i]))
-                        all_capit_preds[q_i], acc_capit_probs[q_i] = \
-                            self.move_from_accumulated_probabilities_to_token_predictions(
-                                all_capit_preds[q_i], acc_capit_probs[q_i], start_word_id - len(all_capit_preds[q_i]))
-                        acc_punct_probs[q_i] = self.update_accumulated_probabilities(
-                            acc_punct_probs[q_i], b_punct_probs_i)
-                        acc_capit_probs[q_i] = self.update_accumulated_probabilities(
-                            acc_capit_probs[q_i], b_capit_probs_i)
-            for q_i, (pred, prob) in enumerate(zip(all_punct_preds, acc_punct_probs)):
-                if prob is not None:
-                    all_punct_preds[q_i], acc_punct_probs[q_i] = \
-                        self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
-            for q_i, (pred, prob) in enumerate(zip(all_capit_preds, acc_capit_probs)):
-                if prob is not None:
-                    all_capit_preds[q_i], acc_capit_probs[q_i] = \
-                        self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
-
-            punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
-            capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
-
-            queries = [q.strip().split() for q in queries]
+                    for all_preds, acc_probs, b_probs_i in [
+                        (all_punct_preds, acc_punct_probs, bpp_i), (all_capit_preds, acc_capit_probs, bcp_i)
+                    ]:
+                        if acc_probs[q_i] is None:
+                            acc_probs[q_i] = b_probs_i
+                        else:
+                            all_preds[q_i], acc_probs[q_i] = \
+                                self.move_from_accumulated_probabilities_to_token_predictions(
+                                    all_preds[q_i], acc_probs[q_i], start_word_id - len(all_preds[q_i]))
+                            acc_probs[q_i] = self.update_accumulated_probabilities(acc_probs[q_i], b_probs_i)
+            for all_preds, acc_probs in [(all_punct_preds, acc_punct_probs), (all_capit_preds, acc_capit_probs)]:
+                for q_i, (pred, prob) in enumerate(zip(all_preds, acc_probs)):
+                    if prob is not None:
+                        all_preds[q_i], acc_probs[q_i] = \
+                            self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
             for i, query in enumerate(queries):
-                punct_preds = all_punct_preds[i]
-                capit_preds = all_capit_preds[i]
-                assert len(query) == len(punct_preds), f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}"
-                assert len(query) == len(capit_preds), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}"
-                query_with_punct_and_capit = ''
-                for j, word in enumerate(query):
-                    punct_label = punct_ids_to_labels[punct_preds[j]]
-                    capit_label = capit_ids_to_labels[capit_preds[j]]
-
-                    if capit_label != self._cfg.dataset.pad_label:
-                        word = word.capitalize()
-                    query_with_punct_and_capit += word
-                    if punct_label != self._cfg.dataset.pad_label:
-                        query_with_punct_and_capit += punct_label
-                    query_with_punct_and_capit += ' '
-
-                result.append(query_with_punct_and_capit.strip())
+                result.append(
+                    self.apply_punctuation_and_capitalization_predictions(
+                        query, all_punct_preds[i], all_capit_preds[i]
+                    )
+                )
         finally:
             # set mode back to its original value
             self.train(mode=mode)
