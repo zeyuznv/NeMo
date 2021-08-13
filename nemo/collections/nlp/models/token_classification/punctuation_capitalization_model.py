@@ -389,9 +389,9 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
     @staticmethod
     def remove_margins(tensor, margin_size, keep_left, keep_right):
         if not keep_left:
-            tensor = tensor[margin_size:]
+            tensor = tensor[margin_size + 1:]  # remove left margin and CLS token
         if not keep_right:
-            tensor = tensor[:tensor.shape[0] - margin_size]
+            tensor = tensor[:tensor.shape[0] - margin_size - 1]  # remove right margin and SEP token
         return tensor
 
     def apply_punctuation_and_capitalization_predictions(self, query, punct_preds, capit_preds):
@@ -447,11 +447,17 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         self, queries: List[str], batch_size: int = None, max_seq_length: int = 512, step: int = 128, margin: int = 32
     ) -> List[str]:
         """
-        Adds punctuation and capitalization to the queries. Use this method for debugging and prototyping.
+        Adds punctuation and capitalization to the queries. Use this method for inference.
         Args:
             queries: lower cased text without punctuation
             batch_size: batch size to use during inference
             max_seq_length: maximum sequence length after tokenization
+            step: relative shift of consequent segments into which long queries are split. Long queries are split into
+                segments which can overlap. Parameter ``step`` controls such overlapping. Imagine that queries are
+                tokenized into characters, ``max_seq_length`` equals 5, and ``step`` equals 2. In such a case query
+                "hello" is tokenized into segments
+                ``[['<CLS>', 'h', 'e', 'l', '<SEP>'], ['<CLS>', 'l', 'l', 'o', '<SEP>']].
+            margin: number of subtokens in the beginning and the end of a sequence which are discarded
         Returns:
             result: text with added capitalization and punctuation
         """
