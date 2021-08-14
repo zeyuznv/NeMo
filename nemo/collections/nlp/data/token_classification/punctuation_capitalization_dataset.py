@@ -568,11 +568,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         margin: int = 16
     ):
         """ Initializes BertPunctuationCapitalizationInferDataset. """
-        if step > max_seq_length:
-            raise ValueError(f"Dataset parameter `step` has to be less or equal to `max_seq_length`. "
-                             f"step={step} max_seq_length={max_seq_length}")
-        self.max_seq_length = max_seq_length
-        self.step = step
         features = get_features_infer(
             queries=queries, max_seq_length=max_seq_length, tokenizer=tokenizer, step=step, margin=margin
         )
