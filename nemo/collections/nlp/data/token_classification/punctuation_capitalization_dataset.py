@@ -454,7 +454,7 @@ def get_subtokens_and_subtokens_mask(query, tokenizer):
 
 def check_max_seq_length_and_margin_and_step(max_seq_length, margin, step):
     if margin >= (max_seq_length - 2) // 2 and margin > 0 or margin < 0:
-        raise ValueError(f"Parameter `margin` has to not negative be less than `(max_seq_length - 2) // 2`. "
+        raise ValueError(f"Parameter `margin` has to be not negative and less than `(max_seq_length - 2) // 2`. "
                          f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
                          f"margin={margin}, max_seq_length={max_seq_length}")
     if step <= 0:
