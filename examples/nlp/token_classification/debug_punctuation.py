@@ -12,25 +12,33 @@ text = "i had about five minutes before i was set to deliver a talk to a bunch o
 
 # try the model on a few examples
 
+texts = [
+    "",
+    "a",
+    "of",
+    "foo",
+    'how are you',
+    'great how about you',
+    text
+]
+
 for m in [0, 1, 2, 3]:
     print(f"margin: {m}")
     try:
-        res = model.add_punctuation_capitalization(
-            [
-                "",
-                "a",
-                "of",
-                "foo",
-                'how are you',
-                'great how about you',
-                text
-            ],
-            step=510,
-            margin=m
-        )
+        res = model.add_punctuation_capitalization(texts, step=510, margin=m)
     except ValueError as e:
         print(e)
         continue
     for i, r in enumerate(res):
         print(f"res[{i}]:", repr(res[i]))
+for m in [0, 1, 2, 3]:
+    for s in [1, 2, 3, 4]:
+        for l in [3, 4, 5, 6]:
+            try:
+                res = model.add_punctuation_capitalization(texts, step=s, margin=m, max_seq_length=l)
+            except ValueError as e:
+                print(e)
+                continue
+            for i, r in enumerate(res):
+                print(f"res[{i}]:", repr(res[i]))
 
