@@ -65,13 +65,14 @@ if __name__ == '__main__':
 
     if os.path.exists(args.model):
         asr_model = nemo_asr.models.EncDecCTCModel.restore_from(args.model)
-    elif args.model in nemo_asr.models.EncDecCTCModel.get_available_model_names():
-        asr_model = nemo_asr.models.EncDecCTCModel.from_pretrained(args.model, strict=False)
     else:
-        raise ValueError(
-            f'{args.model} not a valid model name or path. Provide path to the pre-trained checkpoint '
-            f'or choose from {nemo_asr.models.EncDecCTCModel.list_available_models()}'
-        )
+        try:
+            asr_model = nemo_asr.models.EncDecCTCModelBPE.from_pretrained(args.model, strict=False)
+        except:
+            raise ValueError(
+                f'{args.model} not a valid model name or path. Provide path to the pre-trained checkpoint '
+                f'or choose from {nemo_asr.models.EncDecCTCModel.list_available_models()}'
+            )
 
     # extract ASR vocabulary and add blank symbol
     vocabulary = asr_model.cfg.decoder.vocabulary

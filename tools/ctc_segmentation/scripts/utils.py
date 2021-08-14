@@ -49,8 +49,12 @@ def get_segments(
     config.char_list = vocabulary
     config.min_window_size = window_size
     config.frame_duration_ms = frame_duration_ms
-    config.blank = config.space
-    config.subsampling_factor = 2
+    config.blank = vocabulary[-1]
+    config.subsampling_factor = 8
+    # config.index_duration = frame_duration_ms * config.subsampling_factor / 1000
+    # new configuration
+    # config.blank_transition_cost_zero = False
+    # config.replace_spaces_with_blanks = True
 
     with open(transcript_file, "r") as f:
         text = f.readlines()
@@ -79,7 +83,7 @@ def get_segments(
 
     if len(text_normalized) != len(text):
         raise ValueError(f'{transcript_file} and {transcript_file_normalized} do not match')
-
+    # import pdb; pdb.set_trace()
     ground_truth_mat, utt_begin_indices = cs.prepare_text(config, text)
     logging.debug(f"Syncing {transcript_file}")
     logging.debug(
@@ -118,7 +122,7 @@ def write_output(
 
         for i, (start, end, score) in enumerate(segments):
             outfile.write(
-                f'{start/stride} {end/stride} {score} | {text[i]} | {text_no_preprocessing[i]} | {text_normalized[i]}\n'
+                f'{start/stride} {end/stride} {score/4} | {text[i]} | {text_no_preprocessing[i]} | {text_normalized[i]}\n'
             )
 
 

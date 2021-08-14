@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # default values for optional arguments
-MIN_SCORE=-5
+MIN_SCORE=-50
 CUT_PREFIX=0
 SCRIPTS_DIR="scripts"
 OFFSET=0
