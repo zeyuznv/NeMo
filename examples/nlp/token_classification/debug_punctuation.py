@@ -35,7 +35,7 @@ for m in [0, 1, 2, 3]:
     for s in [1, 2, 3, 4]:
         for l in [3, 4, 5, 6]:
             try:
-                res = model.add_punctuation_capitalization(texts, step=s, margin=m, max_seq_length=l)
+                res = model.add_punctuation_capitalization(texts[:-1], step=s, margin=m, max_seq_length=l)
             except ValueError as e:
                 print(e)
                 continue
