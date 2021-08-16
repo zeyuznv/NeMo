@@ -225,7 +225,7 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
   fi
   bash compute_bleu_for_separate_talks_one_model.sh \
     "${translated_mwer_xml}" \
-    "${reference}" \
+    "${dataset_dir}/IWSLT.TED.tst2019.en-de.de.xml" \
     "${separate_files_translations}/${translation_model_name}/${asr_model_name}" \
     "${output_dir}/reference_for_docs_in_separate_files" \
     "${bleu_separate_files}/${translation_model_name}/${asr_model_name}.txt"
