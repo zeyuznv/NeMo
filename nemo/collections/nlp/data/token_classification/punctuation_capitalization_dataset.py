@@ -497,11 +497,11 @@ def get_features_infer(
         all_segment_ids: token type ids
         all_input_mask: attention mask to use for BERT model
         all_subtokens_mask: masks out all subwords besides the first one
-        all_loss_mask: loss mask to mask out tokens during training
-        punct_all_labels: all labels for punctuation task (ints)
-        capit_all_labels: all labels for capitalization task (ints)
-        punct_label_ids: label (str) to id (int) map for punctuation task
-        capit_label_ids: label (str) to id (int) map for capitalization task
+        all_quantities_of_preceding_words: number of words in query preceding a segment. Used for joining
+            predictions from overlapping segments.
+        all_query_ids: index of a query to which segment belongs
+        all_is_first: is segment first segment in a query
+        all_is_last: is segment last segment in a query
     """
     st = []
     stm = []
@@ -511,8 +511,6 @@ def get_features_infer(
         sent_lengths.append(len(subtokens))
         st.append(subtokens)
         stm.append(subtokens_mask)
-    print("(get_features_infer)subtokens:", subtokens)
-    print("(get_features_infer)subtokens_mask:", subtokens_mask)
     check_max_seq_length_and_margin_and_step(max_seq_length, margin, step)
     max_seq_length = min(max_seq_length, max(sent_lengths) + 2)
     logging.info(f'Max length: {max_seq_length}')
@@ -521,16 +519,12 @@ def get_features_infer(
     step = min(length - margin * 2, step)
     get_stats(sent_lengths)
     all_input_ids, all_segment_ids, all_subtokens_mask, all_input_mask, all_input_mask = [], [], [], [], []
-    all_quantities_of_preceding_words, all_query_ids, all_is_last = [], [], []
+    all_quantities_of_preceding_words, all_query_ids, all_is_first, all_is_last = [], [], [], []
     for q_i, query_st in enumerate(st):
         q_input_ids, q_segment_ids, q_subtokens_mask, q_input_mask, q_quantities_of_preceding_words = [], [], [], [], []
         count = 0
         for i in range(0, max(len(query_st), length) - length + step, step):
             subtokens = [tokenizer.cls_token] + query_st[i:i + length] + [tokenizer.sep_token]
-            if count < 3:
-                print("(get_features_infer)count:", count)
-                print("(get_features_infer)subtokens:", subtokens)
-            count += 1
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
             q_segment_ids.append([0] * len(subtokens))
             q_subtokens_mask.append([0] + stm[q_i][i:i + length] + [0])
@@ -542,6 +536,7 @@ def get_features_infer(
         all_input_mask.append(q_input_mask)
         all_quantities_of_preceding_words.append(q_quantities_of_preceding_words)
         all_query_ids.append([q_i] * len(q_input_ids))
+        all_is_first.append([True] + [False] * (len(q_input_ids) - 1))
         all_is_last.append([False] * (len(q_input_ids) - 1) + [True])
     return (
         list(itertools.chain(*all_input_ids)),
@@ -550,6 +545,7 @@ def get_features_infer(
         list(itertools.chain(*all_subtokens_mask)),
         list(itertools.chain(*all_quantities_of_preceding_words)),
         list(itertools.chain(*all_query_ids)),
+        list(itertools.chain(*all_is_first)),
         list(itertools.chain(*all_is_last))
     )
 
@@ -603,8 +599,10 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             [['[CLS]', 'b', 'a', '[SEP]'], ['[CLS]', 'a', 'r', '[SEP]']]]``, than for batch
             [['[CLS]', 'o', 'o', '[SEP]'], ['[CLS]', 'b', 'a', '[SEP]'], ['[CLS]', 'a', 'r', '[SEP]']]
             ``query_ids=[0, 1, 1]``.
-        is_last: is segment the last segment in query. The right margin of the last query is not removed and
-            this parameter is used to identify last elements.
+        is_first: is segment the first segment in query. The left margin of the first segment in a query is not
+            removed and this parameter is used to identify first segments.
+        is_last: is segment the last segment in query. The right margin of the last segment in a query is not
+            removed and this parameter is used to identify last segments.
 
         """
         return {
@@ -614,6 +612,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             'subtokens_mask': NeuralType(('B', 'T'), MaskType()),
             'quantities_of_preceding_words': NeuralType(('B',), Index()),
             'query_ids': NeuralType(('B',), Index()),
+            'is_first': NeuralType(('B',), BoolType()),
             'is_last': NeuralType(('B',), BoolType())
         }
 
@@ -634,13 +633,14 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         self.all_subtokens_mask = features[3]
         self.all_quantities_of_preceding_words = features[4]
         self.all_query_ids = features[5]
-        self.all_is_last = features[6]
+        self.all_is_first = features[6]
+        self.all_is_last = features[7]
 
     def __len__(self) -> int:
         return len(self.all_input_ids)
 
     def collate_fn(self, batch):
-        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
+        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_first, is_last = \
             zip(*batch)
         return (
             pad_sequence([torch.tensor(x) for x in input_ids], batch_first=True, padding_value=0),
@@ -649,6 +649,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             pad_sequence([torch.tensor(x) for x in subtokens_mask], batch_first=True, padding_value=0),
             quantities_of_preceding_words,
             query_ids,
+            is_first,
             is_last,
         )
 
@@ -660,5 +661,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             np.array(self.all_subtokens_mask[idx]),
             self.all_quantities_of_preceding_words[idx],
             self.all_query_ids[idx],
+            self.all_is_first[idx],
             self.all_is_last[idx],
         )

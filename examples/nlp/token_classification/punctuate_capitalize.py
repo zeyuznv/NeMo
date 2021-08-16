@@ -59,8 +59,6 @@ def main():
         texts = []
         for item in manifest:
             texts.append(item[text_key])
-    print("(__main__)texts shape:", [len(t) for t in texts])
-    print("texts:", texts)
     processed_texts = model.add_punctuation_capitalization(
         texts, batch_size=args.batch_size, max_seq_length=args.max_seq_length, step=args.step, margin=args.margin,
     )

@@ -422,24 +422,22 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             subtokens_mask,
             start_word_ids,
             margin,
+            is_first,
             is_last,
             query_ids,
-            is_first_segment_in_query,
     ):
         new_start_word_ids = list(start_word_ids)
         subtokens_mask = subtokens_mask > 0.5
         b_punct_probs, b_capit_probs = [], []
-        for i, (last, q_i, pl, cl, stm) in enumerate(
-                zip(is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
-            if not is_first_segment_in_query[q_i]:
-                new_start_word_ids[i] += torch.count_nonzero(stm[:margin]).numpy()
-            stm = self.remove_margins(stm, margin, keep_left=is_first_segment_in_query[q_i], keep_right=last)
+        for i, (first, last, q_i, pl, cl, stm) in enumerate(
+                zip(is_first, is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
+            if not first:
+                new_start_word_ids[i] += torch.count_nonzero(stm[:margin + 1]).numpy()  # + 1 is for [CLS] token
+            stm = self.remove_margins(stm, margin, keep_left=first, keep_right=last)
             for b_probs, logits in [(b_punct_probs, pl), (b_capit_probs, cl)]:
                 b_probs.append(
                     torch.nn.functional.softmax(
-                        self.remove_margins(
-                            logits, margin, keep_left=is_first_segment_in_query[q_i], keep_right=last
-                        )[stm],
+                        self.remove_margins(logits, margin, keep_left=first, keep_right=last)[stm],
                         dim=-1,
                     ).detach().cpu().numpy()
                 )
@@ -498,8 +496,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             all_punct_preds, all_capit_preds = [[] for _ in queries], [[] for _ in queries]
             acc_punct_probs, acc_capit_probs = [None for _ in queries], [None for _ in queries]
             for batch_i, batch in enumerate(infer_datalayer):
-                input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_last = batch
-                print("batch_i, input_ids:", batch_i, input_ids)
+                input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_first, is_last = batch
                 punct_logits, capit_logits = self.forward(
                     input_ids=input_ids.to(device),
                     token_type_ids=input_type_ids.to(device),
@@ -511,9 +508,9 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     subtokens_mask,
                     start_word_ids,
                     margin,
+                    is_first,
                     is_last,
                     query_ids,
-                    [not p for p in all_punct_preds],
                 )
                 for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
                         zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
@@ -528,23 +525,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                             all_preds[q_i], acc_probs[q_i] = \
                                 self.move_from_accumulated_probabilities_to_token_predictions(
                                     all_preds[q_i], acc_probs[q_i], start_word_id - len(all_preds[q_i]))
-                            try:
-                                acc_probs[q_i] = self.update_accumulated_probabilities(acc_probs[q_i], b_probs_i)
-                            except ValueError:
-                                print("input_ids.shape, subtoken_mask.shape:", input_ids.shape, subtokens_mask.shape)
-                                print("punct_logits.shape, capit_logits.shape:", punct_logits.shape, capit_logits.shape)
-                                print("b_punct_probs.shape, b_capit_probs.shape:", [e.shape for e in b_punct_probs],[e.shape for e in  b_capit_probs])
-                                print("q_i:", q_i)
-                                print("acc_probs[q_i].shape:", acc_probs[q_i].shape)
-                                print("b_probs_i.shape:", b_probs_i.shape)
-                                print("start_word_id:", start_word_id)
-                                print("i:", i)
-                                print("len(all_preds[q_i]):", len(all_preds[q_i]))
-                                print("len(all_preds_before_move):", len(all_preds_before_move))
-                                print("acc_probs_before_move.shape:", acc_probs_before_move.shape)
-                                print("batch i:", batch_i)
-                                raise
-                print("batch index, b_punct_probs.shape, b_capit_probs.shape:", batch_i, [e.shape for e in b_punct_probs],[e.shape for e in  b_capit_probs])
+                            acc_probs[q_i] = self.update_accumulated_probabilities(acc_probs[q_i], b_probs_i)
                                 
             for all_preds, acc_probs in [(all_punct_preds, acc_punct_probs), (all_capit_preds, acc_capit_probs)]:
                 for q_i, (pred, prob) in enumerate(zip(all_preds, acc_probs)):
