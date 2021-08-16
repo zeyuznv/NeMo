@@ -1,3 +1,6 @@
+import sys
+sys.path = ["/home/lab/NeMo"] + sys.path
+
 import argparse
 import json
 from pathlib import Path
@@ -6,7 +9,7 @@ from nemo.collections.nlp.models import PunctuationCapitalizationModel
 
 
 def get_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     input_ = parser.add_mutually_exclusive_group(required=True)
     input_.add_argument(
         "--input_manifest",
@@ -42,7 +45,7 @@ def get_args():
              "`--output_manifest` and `--output_text` should be provided."
     )
     model = parser.add_mutually_exclusive_group(required=False)
-    model.add_argument("--pretrained_model", "-p")
+    model.add_argument("--pretrained_name", "-p")
     model.add_argument("--model_path", "-P", type=Path)
     parser.add_argument("--max_seq_length", "-L", type=int, default=64)
     parser.add_argument("--margin", "-g", type=int, default=16)
@@ -85,7 +88,7 @@ def main():
         for item in manifest:
             texts.append(item[text_key])
     processed_texts = model.add_punctuation_capitalization(
-        texts, batch_size=args.batch_size, max_seq_length=args.max_seq_length, step=8, margin=16,
+        texts, batch_size=args.batch_size, max_seq_length=args.max_seq_length, step=args.step, margin=args.margin,
     )
     if args.output_manifest is None:
         with args.output_text.open('w') as f:
