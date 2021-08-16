@@ -415,7 +415,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             query_with_punct_and_capit += ' '
         return query_with_punct_and_capit[:-1]
 
-    def transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
+    def _transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
             self,
             punct_logits,
             capit_logits,
@@ -446,22 +446,40 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         return b_punct_probs, b_capit_probs
 
     def add_punctuation_capitalization(
-        self, queries: List[str], batch_size: int = None, max_seq_length: int = 512, step: int = 128, margin: int = 32
+        self, queries: List[str], batch_size: int = None, max_seq_length: int = 64, step: int = 8, margin: int = 16
     ) -> List[str]:
         """
         Adds punctuation and capitalization to the queries. Use this method for inference.
+
+        Parameters ``max_seq_length``, ``step``, ``margin`` are for controlling the way queries are split into segments
+        which then processed by the model. Parameter ``max_seq_length`` is a length of a segment after tokenization
+        including special tokens [CLS] in the beginning and [SEP] in the end of a segment. Parameter ``step`` is shift
+        between consequent segments. Parameter ``margin`` is used to exclude negative effect of subtokens near
+        borders of segments which have only one side context.
+
+        If segments overlap, probabilities of overlapping predictions are multiplied and then the label with
+        corresponding to the maximum probability is selected.
+
         Args:
             queries: lower cased text without punctuation
             batch_size: batch size to use during inference
-            max_seq_length: maximum sequence length after tokenization
+            max_seq_length: maximum sequence length of segment after tokenization.
             step: relative shift of consequent segments into which long queries are split. Long queries are split into
                 segments which can overlap. Parameter ``step`` controls such overlapping. Imagine that queries are
-                tokenized into characters, ``max_seq_length`` equals 5, and ``step`` equals 2. In such a case query
-                "hello" is tokenized into segments
-                ``[['<CLS>', 'h', 'e', 'l', '<SEP>'], ['<CLS>', 'l', 'l', 'o', '<SEP>']].
-            margin: number of subtokens in the beginning and the end of a sequence which are discarded
+                tokenized into characters, ``max_seq_length=5``, and ``step=2``. In such a case query "hello" is
+                tokenized into segments ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'l', 'l', 'o', '[SEP]']]``.
+            margin: number of subtokens in the beginning and the end of segments which are not used for prediction
+                computation. The first segment does not have left margin and the last segment does not have right
+                margin. For example, if input sequence is tokenized into characters, ``max_seq_length=5``,
+                ``step=1``, and ``margin=1`` than query "hello" will be tokenized into segments
+                ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'e', 'l', 'l', '[SEP]'],
+                ['[CLS]', 'l', 'l', 'o', '[SEP]']]``. These segments are passed to the model. Before final predictions
+                computation, margins are removed. In the next list, subtokens which logits are not used for final
+                predictions computation are marked with asterisk: ``[['[CLS]'*, 'h', 'e', 'l'*, '[SEP]'*],
+                ['[CLS]'*, 'e'*, 'l', 'l'*, '[SEP]'*], ['[CLS]'*, 'l'*, 'l', 'o', '[SEP]'*]]``.
         Returns:
-            result: text with added capitalization and punctuation
+            result: text with added capitalization and punctuation ``max_seq_length`` equals 5, ``step`` equals 2, and
+
         """
         if queries is None or len(queries) == 0:
             return []
@@ -486,7 +504,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
                     token_type_ids=input_type_ids.to(device),
                     attention_mask=input_mask.to(device),
                 )
-                b_punct_probs, b_capit_probs = self.transform_logits_to_probs_and_remove_margins_and_extract_word_probs(
+                b_punct_probs, b_capit_probs = self._transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
                     punct_logits,
                     capit_logits,
                     subtokens_mask,

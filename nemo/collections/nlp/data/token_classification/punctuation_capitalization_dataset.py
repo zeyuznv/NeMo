@@ -467,17 +467,30 @@ def check_max_seq_length_and_margin_and_step(max_seq_length, margin, step):
 def get_features_infer(
     queries: List[str],
     tokenizer: TokenizerSpec,
-    max_seq_length: int = 512,
-    step: Optional[int] = 128,
-    margin: Optional[int] = 0,
+    max_seq_length: int = 64,
+    step: Optional[int] = 8,
+    margin: Optional[int] = 16,
 ):
     """
     Processes the data and returns features.
 
     Args:
         queries: text sequences
-        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
         tokenizer: such as AutoTokenizer
+        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        step: relative shift of consequent segments into which long queries are split. Long queries are split into
+            segments which can overlap. Parameter ``step`` controls such overlapping. Imagine that queries are
+            tokenized into characters, ``max_seq_length=5``, and ``step=2``. In such a case query "hello" is
+            tokenized into segments ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'l', 'l', 'o', '[SEP]']]``.
+        margin: number of subtokens in the beginning and the end of segments which are not used for prediction
+            computation. The first segment does not have left margin and the last segment does not have right
+            margin. For example, if input sequence is tokenized into characters, ``max_seq_length=5``,
+            ``step=1``, and ``margin=1`` than query "hello" will be tokenized into segments
+            ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'e', 'l', 'l', '[SEP]'],
+            ['[CLS]', 'l', 'l', 'o', '[SEP]']]``. These segments are passed to the model. Before final predictions
+            computation, margins are removed. In the next list, subtokens which logits are not used for final
+            predictions computation are marked with asterisk: ``[['[CLS]'*, 'h', 'e', 'l'*, '[SEP]'*],
+            ['[CLS]'*, 'e'*, 'l', 'l'*, '[SEP]'*], ['[CLS]'*, 'l'*, 'l', 'o', '[SEP]'*]]``.
 
     Returns:
         all_input_ids: input ids for all tokens
@@ -539,16 +552,54 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     Creates dataset to use during inference for punctuation and capitalization tasks with a pretrained model.
     For dataset to use during training with labels, see BertPunctuationCapitalizationDataset.
 
+    Parameters ``max_seq_length``, ``step``, ``margin`` are for controlling the way queries are split into segments
+    which then processed by the model. Parameter ``max_seq_length`` is a length of a segment after tokenization
+    including special tokens [CLS] in the beginning and [SEP] in the end of a segment. Parameter ``step`` is shift
+    between consequent segments. Parameter ``margin`` is used to exclude negative effect of subtokens near
+    borders of segments which have only one side context.
+
     Args:
-        queries file to sequences, each line should a sentence, no header.
-        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        queries: list of sequences.
         tokenizer: such as AutoTokenizer
+        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        step: relative shift of consequent segments into which long queries are split. Long queries are split into
+            segments which can overlap. Parameter ``step`` controls such overlapping. Imagine that queries are
+            tokenized into characters, ``max_seq_length=5``, and ``step=2``. In such a case query "hello" is
+            tokenized into segments ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'l', 'l', 'o', '[SEP]']]``.
+        margin: number of subtokens in the beginning and the end of segments which are not used for prediction
+            computation. The first segment does not have left margin and the last segment does not have right
+            margin. For example, if input sequence is tokenized into characters, ``max_seq_length=5``,
+            ``step=1``, and ``margin=1`` than query "hello" will be tokenized into segments
+            ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'e', 'l', 'l', '[SEP]'],
+            ['[CLS]', 'l', 'l', 'o', '[SEP]']]``. These segments are passed to the model. Before final predictions
+            computation, margins are removed. In the next list, subtokens which logits are not used for final
+            predictions computation are marked with asterisk: ``[['[CLS]'*, 'h', 'e', 'l'*, '[SEP]'*],
+            ['[CLS]'*, 'e'*, 'l', 'l'*, '[SEP]'*], ['[CLS]'*, 'l'*, 'l', 'o', '[SEP]'*]]``.
     """
 
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
         """Returns definitions of module output ports.
-               """
+
+        input_ids: ids of word subtokens encoded using tokenizer
+        segment_ids: an array of zeros
+        input_mask: attention mask. Zeros if input is padding.
+        subtoken_mask: a mask used for retrieving predictions for words. An element equals ``1`` if corresponding
+            token is the first token in some word and zero otherwise. For example, if input query
+            "language processing" is tokenized into ["[CLS]", "language", "process", "ing", "SEP"] than
+            ``subtokens_mask`` will be [0, 1, 1, 0, 0].
+        quantities_of_preceding_words: number of words preceding a segment in a query. It is used for uniting
+            predictions from different segments if such segments overlap. For example, if query "hello john" is
+            tokenized into segments ``[['hell', 'o'], ['john']]``, than ``quantities_of_preceding_words=[0, 1]``.
+        query_ids: ids of queries to which segments belong. For example, if ``queries=["foo", "bar"]`` are
+            segmented into ``[[['[CLS]', 'f', 'o', '[SEP]'], ['[CLS]', 'o', 'o', '[SEP]']],
+            [['[CLS]', 'b', 'a', '[SEP]'], ['[CLS]', 'a', 'r', '[SEP]']]]``, than for batch
+            [['[CLS]', 'o', 'o', '[SEP]'], ['[CLS]', 'b', 'a', '[SEP]'], ['[CLS]', 'a', 'r', '[SEP]']]
+            ``query_ids=[0, 1, 1]``.
+        is_last: is segment the last segment in query. The right margin of the last query is not removed and
+            this parameter is used to identify last elements.
+
+        """
         return {
             'input_ids': NeuralType(('B', 'T'), ChannelType()),
             'segment_ids': NeuralType(('B', 'T'), ChannelType()),
@@ -567,7 +618,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         step: int = 32,
         margin: int = 16
     ):
-        """ Initializes BertPunctuationCapitalizationInferDataset. """
         features = get_features_infer(
             queries=queries, max_seq_length=max_seq_length, tokenizer=tokenizer, step=step, margin=margin
         )
