@@ -228,7 +228,7 @@ if [ "${mwerSegmenter}" -eq 1 ]; then
     "${reference}" \
     "${separate_files_translations}/${translation_model_name}/${asr_model_name}" \
     "${output_dir}/reference_for_docs_in_separate_files" \
-    "${bleu_separate_files}"
+    "${bleu_separate_files}/${translation_model_name}/${asr_model_name}.txt"
 fi
 
 set +e

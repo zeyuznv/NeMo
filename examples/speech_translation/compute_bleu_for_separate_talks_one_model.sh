@@ -9,7 +9,12 @@ Parameters of the script are
   bleu_file: path to file with BLEU scores for individual talks
 
 Usage example:
-source compute_bleu_for_separate_talks_one_model.sh
+source compute_bleu_for_separate_talks_one_model.sh ~/iwslt_2019_test_result/stt_en_citrinet_1024.xml \
+  ~/data/IWSLT.tst2019/IWSLT.TED.tst2019.en-de.de.xml \
+  ~/iwslt_2019_test_result/translations_of_separate_talks \
+  ~/iwslt_2019_test_result/references_for_separate_talks \
+  ~/iwlst_2019_test_result/BLEU_for_separate_talks.txt
+
 MULTILINE-COMMENT
 
 set -e
