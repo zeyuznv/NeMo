@@ -425,49 +425,6 @@ class BertPunctuationCapitalizationDataset(Dataset):
         )
 
 
-def split_into_overlapping_segments(seq, length, step, subtokens_mask, pad_value):
-    result = []
-    i = 0
-    if not subtokens_mask[0]:
-        logging.warning("The zeroth element of subtokens mask is zero. It is unexpected since the first subtoken of a "
-                        "word has to have mask 1. The zeroth segment starts in the middle of a word. "
-                        "This may affect performance.")
-    while i + length < len(seq):
-        end_of_segment = None
-        for j in range(0, length):
-            if subtokens_mask[i + length - j]:
-                end_of_segment = i + length - j
-                break
-        if end_of_segment is None:
-            logging.warning(f"Entire segment from {i} to {i + length} is inside 1 word. The segment ends in the "
-                            f"middle of a word. This may affect performance.")
-            result.append(seq[i:i + length])
-        else:
-            result.append(seq[i:end_of_segment] + [pad_value] * (end_of_segment - i))
-        beginning_of_next_segment = None
-        for j in range(0, step):
-            if subtokens_mask[i + step - j]:
-                beginning_of_next_segment = i + step - j
-                break
-        if beginning_of_next_segment is None:
-            logging.warning(f"Could not make a step {step}. Entire step is inside 1 word. Increasing step to the "
-                            f"beginning of next word.")
-            for j in range(step, length):
-                if subtokens_mask[i + j]:
-                    beginning_of_next_segment = i + j
-                    break
-            if beginning_of_next_segment is None:
-                logging.warning(f"Entire segment from {i} to {i + length} is inside 1 word. The next segment starts in "
-                                f"the middle of a word. This may affect performance. Step will be increased to the "
-                                f"length of the segment.")
-                i += length
-            else:
-                i = beginning_of_next_segment
-        else:
-            i = beginning_of_next_segment
-    return result
-
-
 def find_idx_of_first_nonzero(stm, start, max_, left):
     if left:
         end = start - max_
@@ -483,84 +440,90 @@ def find_idx_of_first_nonzero(stm, start, max_, left):
     return result
 
 
+def get_subtokens_and_subtokens_mask(query, tokenizer):
+    words = query.strip().split()
+    subtokens = []
+    subtokens_mask = []
+    for j, word in enumerate(words):
+        word_tokens = tokenizer.text_to_tokens(word)
+        subtokens.extend(word_tokens)
+        subtokens_mask.append(1)
+        subtokens_mask.extend([0] * (len(word_tokens) - 1))
+    return subtokens, subtokens_mask
+
+
+def check_max_seq_length_and_margin_and_step(max_seq_length, margin, step):
+    if margin >= (max_seq_length - 2) // 2 and margin > 0 or margin < 0:
+        raise ValueError(f"Parameter `margin` has to be not negative and less than `(max_seq_length - 2) // 2`. "
+                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
+                         f"margin={margin}, max_seq_length={max_seq_length}")
+    if step <= 0:
+        raise ValueError(f"Parameter `step` has to be positive whereas step={step}")
+    if step > max_seq_length - 2 - 2 * margin:
+        logging.warning(f"Parameter step={step} is too big. It will be reduced to "
+                        f"`min(max_seq_length, <maximum query length> + 2) - 2 - 2 * margin`.")
+
+
 def get_features_infer(
     queries: List[str],
     tokenizer: TokenizerSpec,
-    max_seq_length: int = 512,
-    step: Optional[int] = 128,
-    margin: Optional[int] = 0,
+    max_seq_length: int = 64,
+    step: Optional[int] = 8,
+    margin: Optional[int] = 16,
 ):
     """
     Processes the data and returns features.
 
     Args:
         queries: text sequences
-        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
         tokenizer: such as AutoTokenizer
+        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        step: relative shift of consequent segments into which long queries are split. Long queries are split into
+            segments which can overlap. Parameter ``step`` controls such overlapping. Imagine that queries are
+            tokenized into characters, ``max_seq_length=5``, and ``step=2``. In such a case query "hello" is
+            tokenized into segments ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'l', 'l', 'o', '[SEP]']]``.
+        margin: number of subtokens in the beginning and the end of segments which are not used for prediction
+            computation. The first segment does not have left margin and the last segment does not have right
+            margin. For example, if input sequence is tokenized into characters, ``max_seq_length=5``,
+            ``step=1``, and ``margin=1`` than query "hello" will be tokenized into segments
+            ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'e', 'l', 'l', '[SEP]'],
+            ['[CLS]', 'l', 'l', 'o', '[SEP]']]``. These segments are passed to the model. Before final predictions
+            computation, margins are removed. In the next list, subtokens which logits are not used for final
+            predictions computation are marked with asterisk: ``[['[CLS]'*, 'h', 'e', 'l'*, '[SEP]'*],
+            ['[CLS]'*, 'e'*, 'l', 'l'*, '[SEP]'*], ['[CLS]'*, 'l'*, 'l', 'o', '[SEP]'*]]``.
 
     Returns:
         all_input_ids: input ids for all tokens
         all_segment_ids: token type ids
         all_input_mask: attention mask to use for BERT model
         all_subtokens_mask: masks out all subwords besides the first one
-        all_loss_mask: loss mask to mask out tokens during training
-        punct_all_labels: all labels for punctuation task (ints)
-        capit_all_labels: all labels for capitalization task (ints)
-        punct_label_ids: label (str) to id (int) map for punctuation task
-        capit_label_ids: label (str) to id (int) map for capitalization task
+        all_quantities_of_preceding_words: number of words in query preceding a segment. Used for joining
+            predictions from overlapping segments.
+        all_query_ids: index of a query to which segment belongs
+        all_is_first: is segment first segment in a query
+        all_is_last: is segment last segment in a query
     """
     st = []
     stm = []
     sent_lengths = []
-
     for i, query in enumerate(queries):
-        words = query.strip().split()
-
-        # add bos token
-        subtokens = []
-        subtokens_mask = []
-
-        for j, word in enumerate(words):
-            word_tokens = tokenizer.text_to_tokens(word)
-            subtokens.extend(word_tokens)
-
-            subtokens_mask.append(1)
-            subtokens_mask.extend([0] * (len(word_tokens) - 1))
-
-        # add eos token
+        subtokens, subtokens_mask = get_subtokens_and_subtokens_mask(query, tokenizer)
         sent_lengths.append(len(subtokens))
         st.append(subtokens)
         stm.append(subtokens_mask)
-
-    if margin >= (max_seq_length - 2) // 2 and margin > 0 or margin < 0:
-        raise ValueError(f"Parameter `margin` has to not negative be less than `(max_seq_length - 2) // 2`. "
-                         f"Don't forget about CLS and EOS tokens in the beginning and the end of segment. "
-                         f"margin={margin}, max_seq_length={max_seq_length}")
-    if step <= 0:
-        raise ValueError(f"Parameter `step` has to be positive whereas step={step}")
-    if step > max_seq_length - 2 - 2 * margin:
-        logging.warning(f"Parameter step={step} is too big. When needed to will be reduced to "
-                        f"`max_seq_length - 2 - 2 * margin = {max_seq_length - 2 - 2 * margin}`.")
+    check_max_seq_length_and_margin_and_step(max_seq_length, margin, step)
     max_seq_length = min(max_seq_length, max(sent_lengths) + 2)
     logging.info(f'Max length: {max_seq_length}')
     # Maximum number of word subtokens in segment. The first and the last tokens in segment are CLS and EOS
     length = max_seq_length - 2
     step = min(length - margin * 2, step)
     get_stats(sent_lengths)
-    all_input_ids = []
-    all_segment_ids = []
-    all_subtokens_mask = []
-    all_input_mask = []
-    all_quantities_of_preceding_words = []
-    all_query_ids = []
-    all_is_last = []
+    all_input_ids, all_segment_ids, all_subtokens_mask, all_input_mask, all_input_mask = [], [], [], [], []
+    all_quantities_of_preceding_words, all_query_ids, all_is_first, all_is_last = [], [], [], []
     for q_i, query_st in enumerate(st):
-        q_input_ids = []
-        q_segment_ids = []
-        q_subtokens_mask = []
-        q_input_mask = []
-        q_quantities_of_preceding_words = []
-        for i in range(0, len(query_st) - length + step, step):
+        q_input_ids, q_segment_ids, q_subtokens_mask, q_input_mask, q_quantities_of_preceding_words = [], [], [], [], []
+        count = 0
+        for i in range(0, max(len(query_st), length) - length + step, step):
             subtokens = [tokenizer.cls_token] + query_st[i:i + length] + [tokenizer.sep_token]
             q_input_ids.append(tokenizer.tokens_to_ids(subtokens))
             q_segment_ids.append([0] * len(subtokens))
@@ -573,6 +536,7 @@ def get_features_infer(
         all_input_mask.append(q_input_mask)
         all_quantities_of_preceding_words.append(q_quantities_of_preceding_words)
         all_query_ids.append([q_i] * len(q_input_ids))
+        all_is_first.append([True] + [False] * (len(q_input_ids) - 1))
         all_is_last.append([False] * (len(q_input_ids) - 1) + [True])
     return (
         list(itertools.chain(*all_input_ids)),
@@ -581,6 +545,7 @@ def get_features_infer(
         list(itertools.chain(*all_subtokens_mask)),
         list(itertools.chain(*all_quantities_of_preceding_words)),
         list(itertools.chain(*all_query_ids)),
+        list(itertools.chain(*all_is_first)),
         list(itertools.chain(*all_is_last))
     )
 
@@ -590,16 +555,56 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     Creates dataset to use during inference for punctuation and capitalization tasks with a pretrained model.
     For dataset to use during training with labels, see BertPunctuationCapitalizationDataset.
 
+    Parameters ``max_seq_length``, ``step``, ``margin`` are for controlling the way queries are split into segments
+    which then processed by the model. Parameter ``max_seq_length`` is a length of a segment after tokenization
+    including special tokens [CLS] in the beginning and [SEP] in the end of a segment. Parameter ``step`` is shift
+    between consequent segments. Parameter ``margin`` is used to exclude negative effect of subtokens near
+    borders of segments which have only one side context.
+
     Args:
-        queries file to sequences, each line should a sentence, no header.
-        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        queries: list of sequences.
         tokenizer: such as AutoTokenizer
+        max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
+        step: relative shift of consequent segments into which long queries are split. Long queries are split into
+            segments which can overlap. Parameter ``step`` controls such overlapping. Imagine that queries are
+            tokenized into characters, ``max_seq_length=5``, and ``step=2``. In such a case query "hello" is
+            tokenized into segments ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'l', 'l', 'o', '[SEP]']]``.
+        margin: number of subtokens in the beginning and the end of segments which are not used for prediction
+            computation. The first segment does not have left margin and the last segment does not have right
+            margin. For example, if input sequence is tokenized into characters, ``max_seq_length=5``,
+            ``step=1``, and ``margin=1`` than query "hello" will be tokenized into segments
+            ``[['[CLS]', 'h', 'e', 'l', '[SEP]'], ['[CLS]', 'e', 'l', 'l', '[SEP]'],
+            ['[CLS]', 'l', 'l', 'o', '[SEP]']]``. These segments are passed to the model. Before final predictions
+            computation, margins are removed. In the next list, subtokens which logits are not used for final
+            predictions computation are marked with asterisk: ``[['[CLS]'*, 'h', 'e', 'l'*, '[SEP]'*],
+            ['[CLS]'*, 'e'*, 'l', 'l'*, '[SEP]'*], ['[CLS]'*, 'l'*, 'l', 'o', '[SEP]'*]]``.
     """
 
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
         """Returns definitions of module output ports.
-               """
+
+        input_ids: ids of word subtokens encoded using tokenizer
+        segment_ids: an array of zeros
+        input_mask: attention mask. Zeros if input is padding.
+        subtoken_mask: a mask used for retrieving predictions for words. An element equals ``1`` if corresponding
+            token is the first token in some word and zero otherwise. For example, if input query
+            "language processing" is tokenized into ["[CLS]", "language", "process", "ing", "SEP"] than
+            ``subtokens_mask`` will be [0, 1, 1, 0, 0].
+        quantities_of_preceding_words: number of words preceding a segment in a query. It is used for uniting
+            predictions from different segments if such segments overlap. For example, if query "hello john" is
+            tokenized into segments ``[['hell', 'o'], ['john']]``, than ``quantities_of_preceding_words=[0, 1]``.
+        query_ids: ids of queries to which segments belong. For example, if ``queries=["foo", "bar"]`` are
+            segmented into ``[[['[CLS]', 'f', 'o', '[SEP]'], ['[CLS]', 'o', 'o', '[SEP]']],
+            [['[CLS]', 'b', 'a', '[SEP]'], ['[CLS]', 'a', 'r', '[SEP]']]]``, than for batch
+            [['[CLS]', 'o', 'o', '[SEP]'], ['[CLS]', 'b', 'a', '[SEP]'], ['[CLS]', 'a', 'r', '[SEP]']]
+            ``query_ids=[0, 1, 1]``.
+        is_first: is segment the first segment in query. The left margin of the first segment in a query is not
+            removed and this parameter is used to identify first segments.
+        is_last: is segment the last segment in query. The right margin of the last segment in a query is not
+            removed and this parameter is used to identify last segments.
+
+        """
         return {
             'input_ids': NeuralType(('B', 'T'), ChannelType()),
             'segment_ids': NeuralType(('B', 'T'), ChannelType()),
@@ -607,6 +612,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             'subtokens_mask': NeuralType(('B', 'T'), MaskType()),
             'quantities_of_preceding_words': NeuralType(('B',), Index()),
             'query_ids': NeuralType(('B',), Index()),
+            'is_first': NeuralType(('B',), BoolType()),
             'is_last': NeuralType(('B',), BoolType())
         }
 
@@ -618,12 +624,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         step: int = 32,
         margin: int = 16
     ):
-        """ Initializes BertPunctuationCapitalizationInferDataset. """
-        if step > max_seq_length:
-            raise ValueError(f"Dataset parameter `step` has to be less or equal to `max_seq_length`. "
-                             f"step={step} max_seq_length={max_seq_length}")
-        self.max_seq_length = max_seq_length
-        self.step = step
         features = get_features_infer(
             queries=queries, max_seq_length=max_seq_length, tokenizer=tokenizer, step=step, margin=margin
         )
@@ -633,13 +633,14 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
         self.all_subtokens_mask = features[3]
         self.all_quantities_of_preceding_words = features[4]
         self.all_query_ids = features[5]
-        self.all_is_last = features[6]
+        self.all_is_first = features[6]
+        self.all_is_last = features[7]
 
     def __len__(self) -> int:
         return len(self.all_input_ids)
 
     def collate_fn(self, batch):
-        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_last = \
+        input_ids, segment_ids, input_mask, subtokens_mask, quantities_of_preceding_words, query_ids, is_first, is_last = \
             zip(*batch)
         return (
             pad_sequence([torch.tensor(x) for x in input_ids], batch_first=True, padding_value=0),
@@ -648,6 +649,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             pad_sequence([torch.tensor(x) for x in subtokens_mask], batch_first=True, padding_value=0),
             quantities_of_preceding_words,
             query_ids,
+            is_first,
             is_last,
         )
 
@@ -659,5 +661,6 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             np.array(self.all_subtokens_mask[idx]),
             self.all_quantities_of_preceding_words[idx],
             self.all_query_ids[idx],
+            self.all_is_first[idx],
             self.all_is_last[idx],
         )
