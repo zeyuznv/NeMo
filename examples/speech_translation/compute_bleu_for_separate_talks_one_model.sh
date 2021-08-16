@@ -21,9 +21,9 @@ set -e
 
 translation="$(realpath "$1")"
 reference="$(realpath "$2")"
-split_translation_dir="$(realpath "$3")"
-split_reference_dir="$(realpath "$4")"
-bleu_file="$(realpath "$5")"
+split_translation_dir="$3"
+split_reference_dir="$4"
+bleu_file="$5"
 
 python xml_2_separate_files.py -i "${reference}" -o "${split_reference_dir}"
 python xml_2_separate_files.py -i "${translation}" -o "${split_translation_dir}"
