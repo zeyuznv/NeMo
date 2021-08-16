@@ -19,7 +19,7 @@ Parameters of the script are
   mwerSegmenter: whether use mwerSegmenter for BLEU calculation. 1 - use mwerSegmenter, 0 - do not use
 
 Usage example:
-source test_iwslt.sh ~/data/IWSLT.tst2019 \
+bash test_iwslt.sh ~/data/IWSLT.tst2019 \
   stt_en_citrinet_1024 \
   ~/checkpoints/wmt21_en_de_backtranslated_24x6_averaged.nemo \
   ~/iwslt_2019_test_result \
