@@ -213,4 +213,22 @@ echo "ASR model: ${asr_model}" >> "${output_file}"
 echo "NMT model: ${translation_model}" >> "${output_file}"
 echo "BLUE: ${bleu}" >> "${output_file}"
 
+
+if [ "${mwerSegmenter}" -eq 1 ]; then
+  printf "\n\nComputing BLEU for separate talks..\n"
+  if [ "${segmented}" -eq 1 ]; then
+    separate_files_translations="${output_dir}/translations_for_docs_in_separate_files_segmented_input"
+    bleu_separate_files="${output_dir}/BLUE_by_docs_segmented_input"
+  else
+    separate_files_translations="${output_dir}/translations_for_docs_in_separate_files_not_segmented_input"
+    bleu_separate_files="${output_dir}/BLUE_by_docs_not_segmented_input"
+  fi
+  bash compute_bleu_for_separate_talks_one_model.sh \
+    "${translated_mwer_xml}" \
+    "${reference}" \
+    "${separate_files_translations}/${translation_model_name}/${asr_model_name}" \
+    "${output_dir}/reference_for_docs_in_separate_files" \
+    "${bleu_separate_files}"
+fi
+
 set +e
