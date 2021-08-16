@@ -45,7 +45,12 @@ def get_args():
              "`--output_manifest` and `--output_text` should be provided."
     )
     model = parser.add_mutually_exclusive_group(required=False)
-    model.add_argument("--pretrained_name", "-p")
+    model.add_argument(
+        "--pretrained_name",
+        "-p",
+        help="The name of NGC pretrained model. List",
+        choices=[m.pretrained_model_name for m in PunctuationCapitalizationModel.list_available_models()],
+    )
     model.add_argument("--model_path", "-P", type=Path)
     parser.add_argument("--max_seq_length", "-L", type=int, default=64)
     parser.add_argument("--margin", "-g", type=int, default=16)
