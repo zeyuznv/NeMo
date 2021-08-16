@@ -209,6 +209,9 @@ else
 fi
 mkdir -p "$(dirname "${output_file}")"
 echo "" >> "${output_file}"
+echo "$(date)" >> "${output_file}"
+echo "segmented: ${segmented}" >> "${output_file}"
+echo "mwerSegmenter: ${mwerSegmenter}" >> "${output_file}"
 echo "ASR model: ${asr_model}" >> "${output_file}"
 echo "NMT model: ${translation_model}" >> "${output_file}"
 echo "BLUE: ${bleu}" >> "${output_file}"
