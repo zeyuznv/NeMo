@@ -8,16 +8,44 @@ from nemo.collections.nlp.models import PunctuationCapitalizationModel
 def get_args():
     parser = argparse.ArgumentParser()
     input_ = parser.add_mutually_exclusive_group(required=True)
-    input_.add_argument("--input_manifest", "-m", type=Path)
-    input_.add_argument("--input_text", "-t", type=Path)
+    input_.add_argument(
+        "--input_manifest",
+        "-m",
+        type=Path,
+        help="Path to the file with NeMo manifest which needs punctuation and capitalization. If the first element "
+             "of manifest contains key 'pred_text', 'pred_text' values are passed for tokenization. Otherwise 'text' "
+             "values are passed for punctuation and capitalization. Exactly one parameter of "
+             "`--input_manifest` and `--input_text` should be provided."
+    )
+    input_.add_argument(
+        "--input_text",
+        "-t",
+        type=Path,
+        help="Path to file with text which needs punctuation and capitalization. Exactly one parameter of "
+             "`--input_manifest` and `--input_text` should be provided."
+    )
     output = parser.add_mutually_exclusive_group(required=True)
-    output.add_argument("--output_manifest", "-M", type=Path)
-    output.add_argument("--output_text", "T", type=Path)
+    output.add_argument(
+        "--output_manifest",
+        "-M",
+        type=Path,
+        help="Path to output NeMo manifest. Text with punctuation and capitalization will be under 'pred_text' key "
+             "if 'pred_text' key is present in the first element of input manifest. Otherwise text with restored "
+             "punctuation and capitalization will be under 'text' key. Exactly one parameter of "
+             "`--output_manifest` and `--output_text` should be provided."
+    )
+    output.add_argument(
+        "--output_text",
+        "-T",
+        type=Path,
+        help="Path to file with text with restored punctuation and capitalization. Exactly one parameter of "
+             "`--output_manifest` and `--output_text` should be provided."
+    )
     model = parser.add_mutually_exclusive_group(required=False)
     model.add_argument("--pretrained_model", "-p")
     model.add_argument("--model_path", "-P", type=Path)
     parser.add_argument("--max_seq_length", "-L", type=int, default=64)
-    parser.add_argument("--margin", "-m", type=int, default=16)
+    parser.add_argument("--margin", "-g", type=int, default=16)
     parser.add_argument("--step", "-s", type=int, default=8)
     parser.add_argument("--batch_size", "-b", type=int, default=128)
     args = parser.parse_args()
