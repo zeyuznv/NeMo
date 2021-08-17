@@ -248,14 +248,20 @@ Required Arguments for Training
 Inference
 ---------
 
-An example script on how to run inference on a few examples, can be found at `examples/nlp/token_classification/punctuation_capitalization_evaluate.py <https://github.com/NVIDIA/NeMo/blob/stable/examples/nlp/token_classification/punctuation_capitalization_evaluate.py>`_.
-
-To start inference with a pre-trained model on a few examples, run:
+Inference is performed by script `examples/nlp/token_classification/punctuate_capitalize.py <https://github.com/NVIDIA/NeMo/blob/stable/examples/nlp/token_classification/punctuate_capitalize.py>`_
 
 .. code::
 
-    python punctuation_capitalization_evaluate.py \
-           pretrained_model=<PRETRAINED_MODEL>
+    python punctuate_capitalize.py \
+        --input_manifest <PATH_TO_INPUT_MANIFEST> \
+        --output_manifest <PATH_TO_OUTPUT_MANIFEST> \
+        --pretrained_name punctuation_en_bert \
+        --max_seq_length 64 \
+        --margin 16 \
+        --step 8
+
+<PATH_TO_INPUT_MANIFEST> is a path to NeMo :doc:`ASR manifest
+
 
 
 Model Evaluation

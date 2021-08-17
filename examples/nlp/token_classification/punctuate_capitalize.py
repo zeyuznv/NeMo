@@ -1,3 +1,17 @@
+# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
 sys.path = ["/home/lab/NeMo"] + sys.path
 
@@ -6,6 +20,25 @@ import json
 from pathlib import Path
 
 from nemo.collections.nlp.models import PunctuationCapitalizationModel
+
+
+"""
+This script is for restoring punctuation and capitalization.
+
+Usage example:
+
+python punctuate_capitalize.py \
+    --input_manifest <PATH_TO_INPUT_MANIFEST> \
+    --output_manifest <PATH_TO_OUTPUT_MANIFEST>
+
+<PATH_TO_INPUT_MANIFEST> is a path to NeMo ASR manifest. Usually it is an output of
+    NeMo/examples/asr/transcribe_speech.py but can be a manifest with 'text' key. Alternatively you can use
+    --input_text parameter for passing text for inference.
+<PATH_TO_OUTPUT_MANIFEST> is a path to NeMo ASR manifest into which script output will be written. Alternatively
+    you can use parameter --output_text.
+
+For more details on this script usage look in argparse help.
+"""
 
 
 def get_args():
@@ -57,14 +90,16 @@ def get_args():
     model.add_argument(
         "--pretrained_name",
         "-p",
-        help="The name of NGC pretrained model. List",
+        help="The name of NGC pretrained model. No more than one of parameters `--pretrained_name`, `--model_path`"
+             "should be provided.",
         choices=[m.pretrained_model_name for m in PunctuationCapitalizationModel.list_available_models()],
     )
     model.add_argument(
         "--model_path",
         "-P",
         type=Path,
-        help="Path to .nemo checkpoint of punctuation and capitalization model."
+        help="Path to .nemo checkpoint of punctuation and capitalization model. No more than one of parameters "
+             "`--pretrained_name` and `--model_path` should be provided."
     )
     parser.add_argument(
         "--max_seq_length",
