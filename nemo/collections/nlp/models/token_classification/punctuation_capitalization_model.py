@@ -371,7 +371,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         )
 
     @staticmethod
-    def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
+    def move_acc_probs_to_token_preds(pred, acc_prob, number_of_probs_to_move):
         if number_of_probs_to_move > acc_prob.shape[0]:
             raise ValueError(f"Not enough accumulated probabilities. "
                              f"Number_of_probs_to_move={number_of_probs_to_move} acc_prob.shape={acc_prob.shape}")
@@ -394,7 +394,7 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             tensor = tensor[:tensor.shape[0] - margin_size - 1]  # remove right margin and SEP token
         return tensor
 
-    def apply_punctuation_and_capitalization_predictions(self, query, punct_preds, capit_preds):
+    def apply_punct_capit_predictions(self, query, punct_preds, capit_preds):
         query = query.strip().split()
         assert len(query) == len(punct_preds), \
             f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}, query[:30]={query[:30]}"
@@ -486,58 +486,52 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             logging.info(f'Using batch size {batch_size} for inference')
         result = []
         mode = self.training
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        d = 'cuda' if torch.cuda.is_available() else 'cpu'
         try:
             self.eval()
-            self = self.to(device)
+            self = self.to(d)
             infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length, step, margin)
 
-            # store predictions for all queries in a single list
+            # Predicted labels for queries. List of labels for every query
             all_punct_preds, all_capit_preds = [[] for _ in queries], [[] for _ in queries]
+            # Accumulated probabilities (or product of probabilities acquired from different segments) of punctuation
+            # and capitalization. Probabilities for words in query are extracted using `subtokens_mask`.Probabilities
+            # for newly processed words are appended to the accumulated probabilities. If probabilities for a word are
+            # already present in `acc_probs`, old probabilities are replaced with multiplication of old probabilities
+            # and probabilities acquired from new segment. Segments are processed in the order they are present in an
+            # input query. When all segments with a word are processed, the label with highest probability is chosen
+            # and appended to an appropriate list in `all_preds`. After adding prediction to `all_preds`,
+            # probabilities for a word are removed from `acc_probs`
             acc_punct_probs, acc_capit_probs = [None for _ in queries], [None for _ in queries]
             for batch_i, batch in enumerate(infer_datalayer):
-                input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_first, is_last = batch
+                input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_first, is_last = \
+                    batch
                 punct_logits, capit_logits = self.forward(
-                    input_ids=input_ids.to(device),
-                    token_type_ids=input_type_ids.to(device),
-                    attention_mask=input_mask.to(device),
+                    input_ids=input_ids.to(d), token_type_ids=input_type_ids.to(d), attention_mask=input_mask.to(d),
                 )
-                b_punct_probs, b_capit_probs, start_word_ids = self._transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
-                    punct_logits,
-                    capit_logits,
-                    subtokens_mask,
-                    start_word_ids,
-                    margin,
-                    is_first,
-                    is_last,
-                    query_ids,
+                _res = self._transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
+                    punct_logits, capit_logits, subtokens_mask, start_word_ids, margin, is_first, is_last, query_ids
                 )
+                punct_probs, capit_probs, start_word_ids = _res
                 for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
-                        zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
+                        zip(query_ids, start_word_ids, punct_probs, capit_probs)):
                     for all_preds, acc_probs, b_probs_i in [
                         (all_punct_preds, acc_punct_probs, bpp_i), (all_capit_preds, acc_capit_probs, bcp_i)
                     ]:
                         if acc_probs[q_i] is None:
                             acc_probs[q_i] = b_probs_i
                         else:
-                            all_preds_before_move = all_preds[q_i]
-                            acc_probs_before_move = acc_probs[q_i]
-                            all_preds[q_i], acc_probs[q_i] = \
-                                self.move_from_accumulated_probabilities_to_token_predictions(
-                                    all_preds[q_i], acc_probs[q_i], start_word_id - len(all_preds[q_i]))
+                            all_preds[q_i], acc_probs[q_i] = self.move_acc_probs_to_token_preds(
+                                    all_preds[q_i], acc_probs[q_i], start_word_id - len(all_preds[q_i]),
+                            )
                             acc_probs[q_i] = self.update_accumulated_probabilities(acc_probs[q_i], b_probs_i)
                                 
             for all_preds, acc_probs in [(all_punct_preds, acc_punct_probs), (all_capit_preds, acc_capit_probs)]:
                 for q_i, (pred, prob) in enumerate(zip(all_preds, acc_probs)):
                     if prob is not None:
-                        all_preds[q_i], acc_probs[q_i] = \
-                            self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
+                        all_preds[q_i], acc_probs[q_i] = self.move_acc_probs_to_token_preds(pred, prob, len(prob))
             for i, query in enumerate(queries):
-                result.append(
-                    self.apply_punctuation_and_capitalization_predictions(
-                        query, all_punct_preds[i], all_capit_preds[i]
-                    )
-                )
+                result.append(self.apply_punct_capit_predictions(query, all_punct_preds[i], all_capit_preds[i]))
         finally:
             # set mode back to its original value
             self.train(mode=mode)
