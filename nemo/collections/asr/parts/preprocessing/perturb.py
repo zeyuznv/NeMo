@@ -51,7 +51,9 @@ from torch.utils.data import IterableDataset
 from nemo.collections.asr.parts.preprocessing.segment import AudioSegment
 from nemo.collections.common.parts.preprocessing import collections, parsers
 from nemo.utils import logging
-
+from nemo.collections.asr.parts.utils.scene_gen import generate_scenes
+import gpuRIR
+from scipy.signal import lfilter
 try:
     from nemo.collections.asr.parts.utils import numba_utils
 
@@ -284,6 +286,50 @@ class GainPerturbation(Perturbation):
         # logging.debug("gain: %d", gain)
         data._samples = data._samples * (10.0 ** (gain / 20.0))
 
+class MultiChannelPerturbation(Perturbation):
+    """
+    Convolves audio with a Room Impulse Response.
+
+    Args:
+        manifest_path (list): Manifest file for RIRs
+        audio_tar_filepaths (list): Tar files, if RIR audio files are tarred
+        shuffle_n (int): Shuffle parameter for shuffling buffered files from the tar files
+        shift_impulse (bool): Shift impulse response to adjust for delay at the beginning
+    """
+
+    def __init__(self):
+        self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
+        self.mics_num = 8
+
+    def generate_rirs(self, room_sz, pos_src, pos_rcv, T60, fs):
+        # print(room_sz, pos_src, pos_rcv, sep='\n')
+        mic_pattern = "omni"  # Receiver polar pattern
+        beta = gpuRIR.beta_SabineEstimation(room_sz, T60)  # Reflection coefficients
+        Tmax = T60 * 0.8  # Time to stop the simulation [s]
+        Tdiff = 0.1 # ISM stops here and the gaussian noise with an exponential envelope starts
+        nb_img = gpuRIR.t2n(T60, room_sz)  # Number of image sources in each dimension
+        RIRs = gpuRIR.simulateRIR(room_sz, beta, pos_src, pos_rcv, nb_img, Tmax, fs, Tdiff=Tdiff, mic_pattern=mic_pattern)
+        # RIRs = np.random.randn(1, len(pos_rcv), int(np.round(Tmax*fs)))
+        return RIRs
+
+    def perturb(self, data):
+        np.random.shuffle(self.T60)
+        T60_scene = self.T60[0]
+
+        # Generate a scene
+        scene_type='random'
+        scene = generate_scenes(1, scene_type, T60_scene)[0]
+
+        # Generate RIRs
+        fs=data.sample_rate
+        RIRs = self.generate_rirs(scene['room_dim'], scene['src_pos'], scene['mic_pos'], T60_scene, fs)
+
+        # Generate reverberant speech
+        rev_signals = np.zeros([self.mics_num, len(data._samples)])
+        for j, rir in enumerate(RIRs[0]):
+            rev_signals[j] = lfilter(rir, 1, data._samples)
+        data._samples = np.vstack(rev_signals)
+        data._channels = self.mics_num
 
 class ImpulsePerturbation(Perturbation):
     """
@@ -665,6 +711,7 @@ perturbation_types = {
     "white_noise": WhiteNoisePerturbation,
     "rir_noise_aug": RirAndNoisePerturbation,
     "transcode_aug": TranscodePerturbation,
+    "multi_channel": MultiChannelPerturbation,
 }
 
 

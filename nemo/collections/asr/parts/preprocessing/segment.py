@@ -71,10 +71,11 @@ class AudioSegment(object):
             samples, _ = librosa.effects.trim(samples, trim_db)
         self._samples = samples
         self._sample_rate = sample_rate
-        if self._samples.ndim >= 2:
-            self._samples = np.mean(self._samples, 1)
+        # if self._samples.ndim >= 2:
+        #     self._samples = np.mean(self._samples, 1)
 
         self._orig_sr = orig_sr if orig_sr is not None else sample_rate
+        self._channels = self._samples.shape[0]
 
     def __eq__(self, other):
         """Return whether two objects are equal."""
@@ -211,11 +212,11 @@ class AudioSegment(object):
 
     @property
     def num_samples(self):
-        return self._samples.shape[0]
+        return self._samples.shape[-1]
 
     @property
     def duration(self):
-        return self._samples.shape[0] / float(self._sample_rate)
+        return self._samples.shape[-1] / float(self._sample_rate)
 
     @property
     def rms_db(self):

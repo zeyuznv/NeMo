@@ -119,7 +119,11 @@ class WaveformFeaturizer(object):
 
     def process_segment(self, audio_segment):
         self.augmentor.perturb(audio_segment)
-        return torch.tensor(audio_segment.samples, dtype=torch.float)
+        if audio_segment._channels > 1:
+            samples = audio_segment.samples
+        else:
+            samples = audio_segment.samples
+        return torch.tensor(samples, dtype=torch.float)
 
     @classmethod
     def from_config(cls, input_config, perturbation_configs=None):

@@ -160,7 +160,7 @@ class _AudioTextDataset(Dataset):
         features = self.featurizer.process(
             sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim, orig_sr=sample.orig_sr
         )
-        f, fl = features, torch.tensor(features.shape[0]).long()
+        f, fl = features, torch.tensor(features.shape[-1]).long()
 
         t, tl = sample.text_tokens, len(sample.text_tokens)
         if self.bos_id is not None:
@@ -749,7 +749,7 @@ class AudioToBPEDataset(_AudioTextDataset):
         """Returns definitions of module output ports.
                """
         return {
-            'audio_signal': NeuralType(('B', 'T'), AudioSignal()),
+            'audio_signal': NeuralType(('B','C', 'T'), AudioSignal()),
             'a_sig_length': NeuralType(tuple('B'), LengthsType()),
             'transcripts': NeuralType(('B', 'T'), LabelsType()),
             'transcript_length': NeuralType(tuple('B'), LengthsType()),

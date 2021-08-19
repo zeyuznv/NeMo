@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 import torch
 from packaging import version
+import numpy as np
 
 from nemo.collections.asr.parts.numba.spec_augment import SpecAugmentNumba, spec_augment_launch_heuristics
 from nemo.collections.asr.parts.preprocessing.features import FilterbankFeatures
@@ -49,6 +50,7 @@ except ModuleNotFoundError:
     HAVE_TORCHAUDIO = False
 
 __all__ = [
+    'MultiChannelAudioToMelSpectrogramPreprocessor',
     'AudioToMelSpectrogramPreprocessor',
     'AudioToMFCCPreprocessor',
     'SpectrogramAugmentation',
@@ -192,30 +194,30 @@ class AudioToMelSpectrogramPreprocessor(AudioPreprocessor):
         }
 
     def __init__(
-        self,
-        sample_rate=16000,
-        window_size=0.02,
-        window_stride=0.01,
-        n_window_size=None,
-        n_window_stride=None,
-        window="hann",
-        normalize="per_feature",
-        n_fft=None,
-        preemph=0.97,
-        features=64,
-        lowfreq=0,
-        highfreq=None,
-        log=True,
-        log_zero_guard_type="add",
-        log_zero_guard_value=2 ** -24,
-        dither=1e-5,
-        pad_to=16,
-        frame_splicing=1,
-        exact_pad=False,
-        stft_exact_pad=False,
-        stft_conv=False,
-        pad_value=0,
-        mag_power=2.0,
+            self,
+            sample_rate=16000,
+            window_size=0.02,
+            window_stride=0.01,
+            n_window_size=None,
+            n_window_stride=None,
+            window="hann",
+            normalize="per_feature",
+            n_fft=None,
+            preemph=0.97,
+            features=64,
+            lowfreq=0,
+            highfreq=None,
+            log=True,
+            log_zero_guard_type="add",
+            log_zero_guard_value=2 ** -24,
+            dither=1e-5,
+            pad_to=16,
+            frame_splicing=1,
+            exact_pad=False,
+            stft_exact_pad=False,
+            stft_conv=False,
+            pad_value=0,
+            mag_power=2.0,
     ):
         super().__init__(n_window_size, n_window_stride)
 
@@ -257,6 +259,184 @@ class AudioToMelSpectrogramPreprocessor(AudioPreprocessor):
 
     def get_features(self, input_signal, length):
         return self.featurizer(input_signal, length)
+
+    @property
+    def filter_banks(self):
+        return self.featurizer.filter_banks
+
+
+class MultiChannelAudioToMelSpectrogramPreprocessor(AudioPreprocessor):
+    """Featurizer module that converts wavs to mel spectrograms.
+        We don't use torchaudio's implementation here because the original
+        implementation is not the same, so for the sake of backwards-compatibility
+        this will use the old FilterbankFeatures for now.
+        Args:
+            sample_rate (int): Sample rate of the input audio data.
+                Defaults to 16000
+            window_size (float): Size of window for fft in seconds
+                Defaults to 0.02
+            window_stride (float): Stride of window for fft in seconds
+                Defaults to 0.01
+            n_window_size (int): Size of window for fft in samples
+                Defaults to None. Use one of window_size or n_window_size.
+            n_window_stride (int): Stride of window for fft in samples
+                Defaults to None. Use one of window_stride or n_window_stride.
+            window (str): Windowing function for fft. can be one of ['hann',
+                'hamming', 'blackman', 'bartlett']
+                Defaults to "hann"
+            normalize (str): Can be one of ['per_feature', 'all_features']; all
+                other options disable feature normalization. 'all_features'
+                normalizes the entire spectrogram to be mean 0 with std 1.
+                'pre_features' normalizes per channel / freq instead.
+                Defaults to "per_feature"
+            n_fft (int): Length of FT window. If None, it uses the smallest power
+                of 2 that is larger than n_window_size.
+                Defaults to None
+            preemph (float): Amount of pre emphasis to add to audio. Can be
+                disabled by passing None.
+                Defaults to 0.97
+            features (int): Number of mel spectrogram freq bins to output.
+                Defaults to 64
+            lowfreq (int): Lower bound on mel basis in Hz.
+                Defaults to 0
+            highfreq  (int): Lower bound on mel basis in Hz.
+                Defaults to None
+            log (bool): Log features.
+                Defaults to True
+            log_zero_guard_type(str): Need to avoid taking the log of zero. There
+                are two options: "add" or "clamp".
+                Defaults to "add".
+            log_zero_guard_value(float, or str): Add or clamp requires the number
+                to add with or clamp to. log_zero_guard_value can either be a float
+                or "tiny" or "eps". torch.finfo is used if "tiny" or "eps" is
+                passed.
+                Defaults to 2**-24.
+            dither (float): Amount of white-noise dithering.
+                Defaults to 1e-5
+            pad_to (int): Ensures that the output size of the time dimension is
+                a multiple of pad_to.
+                Defaults to 16
+            frame_splicing (int): Defaults to 1
+            exact_pad (bool): If True, sets stft center to False and adds padding, such that num_frames = audio_length
+                // hop_length. Defaults to False.
+            stft_exact_pad (bool): If True, uses pytorch_stft and convolutions with
+                padding such that num_frames = num_samples / hop_length. If False,
+                stft_conv will be used to determine how stft will be performed.
+                Defaults to False. TODO:This feature is deprecated and will be removed in 1.1.0
+            stft_conv (bool): If True, uses pytorch_stft and convolutions. If
+                False, uses torch.stft. TODO:This feature is deprecated and will be removed in 1.1.0
+                Defaults to False
+            pad_value (float): The value that shorter mels are padded with.
+                Defaults to 0
+            mag_power (float): The power that the linear spectrogram is raised to
+                prior to multiplication with mel basis.
+                Defaults to 2 for a power spec
+        """
+
+    def save_to(self, save_path: str):
+        pass
+
+    @classmethod
+    def restore_from(cls, restore_path: str):
+        pass
+
+    @property
+    def input_types(self):
+        """Returns definitions of module input ports.
+        """
+        return {
+            "input_signal": NeuralType(('B', 'C', 'T'), AudioSignal(freq=self._sample_rate)),
+            "length": NeuralType(
+                tuple('B'), LengthsType()
+            ),  # Please note that length should be in samples not seconds.
+        }
+
+    @property
+    def output_types(self):
+        """Returns definitions of module output ports.
+        processed_signal:
+            0: AxisType(BatchTag)
+            1: AxisType(MelSpectrogramSignalTag)
+            2: AxisType(ProcessedTimeTag)
+        processed_length:
+            0: AxisType(BatchTag)
+        """
+        return {
+            "processed_signal": NeuralType(('B', 'C', 'C', 'D', 'T'), MelSpectrogramType()),
+            "processed_length": NeuralType(tuple('B'), LengthsType()),
+        }
+
+    def __init__(
+            self,
+            sample_rate=16000,
+            window_size=0.02,
+            window_stride=0.01,
+            n_window_size=None,
+            n_window_stride=None,
+            window="hann",
+            normalize="per_feature",
+            n_fft=None,
+            preemph=0.97,
+            features=64,
+            lowfreq=0,
+            highfreq=None,
+            log=True,
+            log_zero_guard_type="add",
+            log_zero_guard_value=2 ** -24,
+            dither=1e-5,
+            pad_to=16,
+            frame_splicing=1,
+            exact_pad=False,
+            stft_exact_pad=False,
+            stft_conv=False,
+            pad_value=0,
+            mag_power=2.0,
+    ):
+        super().__init__(n_window_size, n_window_stride)
+
+        self._sample_rate = sample_rate
+        if window_size and n_window_size:
+            raise ValueError(f"{self} received both window_size and " f"n_window_size. Only one should be specified.")
+        if window_stride and n_window_stride:
+            raise ValueError(
+                f"{self} received both window_stride and " f"n_window_stride. Only one should be specified."
+            )
+        if window_size:
+            n_window_size = int(window_size * self._sample_rate)
+        if window_stride:
+            n_window_stride = int(window_stride * self._sample_rate)
+
+        self.featurizer = FilterbankFeatures(
+            sample_rate=self._sample_rate,
+            n_window_size=n_window_size,
+            n_window_stride=n_window_stride,
+            window=window,
+            normalize=normalize,
+            n_fft=n_fft,
+            preemph=preemph,
+            nfilt=features,
+            lowfreq=lowfreq,
+            highfreq=highfreq,
+            log=log,
+            log_zero_guard_type=log_zero_guard_type,
+            log_zero_guard_value=log_zero_guard_value,
+            dither=dither,
+            pad_to=pad_to,
+            frame_splicing=frame_splicing,
+            exact_pad=exact_pad,
+            stft_exact_pad=stft_exact_pad,
+            stft_conv=stft_conv,
+            pad_value=pad_value,
+            mag_power=mag_power,
+        )
+
+    def get_features(self, input_signal, length):
+        sig_shape = input_signal.shape
+        out_sig, out_len = self.featurizer(input_signal.view(sig_shape[0] * sig_shape[1],
+                                                    sig_shape[2]), length.repeat_interleave(sig_shape[1]))
+        len_indexes = torch.from_numpy(np.arange(0,out_len.shape[-1],sig_shape[1])).type(torch.LongTensor)
+        fin_len = out_len[len_indexes]
+        return (torch.unsqueeze(out_sig.view(sig_shape[0], sig_shape[1], out_sig.shape[1], out_sig.shape[2]), 2),fin_len)
 
     @property
     def filter_banks(self):
@@ -325,21 +505,21 @@ class AudioToMFCCPreprocessor(AudioPreprocessor):
         pass
 
     def __init__(
-        self,
-        sample_rate=16000,
-        window_size=0.02,
-        window_stride=0.01,
-        n_window_size=None,
-        n_window_stride=None,
-        window='hann',
-        n_fft=None,
-        lowfreq=0.0,
-        highfreq=None,
-        n_mels=64,
-        n_mfcc=64,
-        dct_type=2,
-        norm='ortho',
-        log=True,
+            self,
+            sample_rate=16000,
+            window_size=0.02,
+            window_stride=0.01,
+            n_window_size=None,
+            n_window_stride=None,
+            window='hann',
+            n_fft=None,
+            lowfreq=0.0,
+            highfreq=None,
+            n_mels=64,
+            n_mfcc=64,
+            dct_type=2,
+            norm='ortho',
+            log=True,
     ):
         self._sample_rate = sample_rate
         if not HAVE_TORCHAUDIO:
@@ -446,22 +626,22 @@ class SpectrogramAugmentation(NeuralModule):
         return {"augmented_spec": NeuralType(('B', 'D', 'T'), SpectrogramType())}
 
     def __init__(
-        self,
-        freq_masks=0,
-        time_masks=0,
-        freq_width=10,
-        time_width=10,
-        rect_masks=0,
-        rect_time=5,
-        rect_freq=20,
-        rng=None,
-        mask_value=0.0,
-        use_numba_spec_augment: bool = True,
+            self,
+            freq_masks=0,
+            time_masks=0,
+            freq_width=10,
+            time_width=10,
+            rect_masks=0,
+            rect_time=5,
+            rect_freq=20,
+            rng=None,
+            mask_value=0.0,
+            use_numba_spec_augment: bool = True,
     ):
         super().__init__()
 
         if rect_masks > 0:
-            self.spec_cutout = SpecCutout(rect_masks=rect_masks, rect_time=rect_time, rect_freq=rect_freq, rng=rng,)
+            self.spec_cutout = SpecCutout(rect_masks=rect_masks, rect_time=rect_time, rect_freq=rect_freq, rng=rng, )
             # self.spec_cutout.to(self._device)
         else:
             self.spec_cutout = lambda input_spec: input_spec
@@ -532,7 +712,7 @@ class CropOrPadSpectrogramAugmentation(NeuralModule):
             offset = torch.randint(low=0, high=image_len - audio_length + 1, size=[num_images])
 
             for idx, offset in enumerate(offset):
-                cutout_images.append(image[idx : idx + 1, :, offset : offset + audio_length])
+                cutout_images.append(image[idx: idx + 1, :, offset: offset + audio_length])
 
             image = torch.cat(cutout_images, dim=0)
             del cutout_images

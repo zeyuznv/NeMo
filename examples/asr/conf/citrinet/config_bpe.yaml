@@ -15,6 +15,9 @@ model:
     is_tarred: False
     tarred_audio_filepaths: null
     shard_strategy: "scatter"
+    augmentor:
+      multi_channel:
+        prob: 1.0
 
   validation_ds:
     manifest_filepath: ???
@@ -27,7 +30,7 @@ model:
     type: ???  # Can be either bpe or wpe
 
   preprocessor:
-    _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
+    _target_: nemo.collections.asr.modules.MultiChannelAudioToMelSpectrogramPreprocessor
     normalize: "per_feature"
     window_size: 0.02
     sample_rate: *sample_rate
@@ -38,14 +41,10 @@ model:
     frame_splicing: 1
     dither: 0.00001
 
-  spec_augment:
-    _target_: nemo.collections.asr.modules.SpectrogramAugmentation
-    rect_freq: 50
-    rect_masks: 5
-    rect_time: 120
+
 
   encoder:
-    _target_: nemo.collections.asr.modules.ConvASREncoder
+    _target_: nemo.collections.asr.modules.MultiChannelConvASREncoder
     feat_in: *n_mels
     activation: relu
     conv_mask: true
