@@ -16,7 +16,6 @@ import os
 from typing import Dict, List, Optional
 
 import numpy as np
-import onnx
 import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
@@ -30,9 +29,8 @@ from nemo.collections.nlp.metrics.classification_report import ClassificationRep
 from nemo.collections.nlp.models.nlp_model import NLPModel
 from nemo.collections.nlp.modules.common import TokenClassifier
 from nemo.collections.nlp.modules.common.lm_utils import get_lm_model
-from nemo.collections.nlp.parts.utils_funcs import tensor2list
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
-from nemo.core.classes.exportable import Exportable, ExportFormat
+from nemo.core.classes.exportable import Exportable
 from nemo.core.neural_types import LogitsType, NeuralType
 from nemo.utils import logging
 
@@ -371,10 +369,12 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         )
 
     @staticmethod
-    def move_from_accumulated_probabilities_to_token_predictions(pred, acc_prob, number_of_probs_to_move):
+    def move_acc_probs_to_token_preds(pred, acc_prob, number_of_probs_to_move):
         if number_of_probs_to_move > acc_prob.shape[0]:
-            raise ValueError(f"Not enough accumulated probabilities. "
-                             f"Number_of_probs_to_move={number_of_probs_to_move} acc_prob.shape={acc_prob.shape}")
+            raise ValueError(
+                f"Not enough accumulated probabilities. Number_of_probs_to_move={number_of_probs_to_move} "
+                f"acc_prob.shape={acc_prob.shape}"
+            )
         if number_of_probs_to_move > 0:
             pred = pred + list(np.argmax(acc_prob[:number_of_probs_to_move], axis=-1))
         acc_prob = acc_prob[number_of_probs_to_move:]
@@ -382,24 +382,26 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
 
     @staticmethod
     def update_accumulated_probabilities(acc_prob, update):
-        acc_prob *= update[:acc_prob.shape[0]]
-        acc_prob = np.concatenate([acc_prob, update[acc_prob.shape[0]:]], axis=0)
+        acc_prob *= update[: acc_prob.shape[0]]
+        acc_prob = np.concatenate([acc_prob, update[acc_prob.shape[0] :]], axis=0)
         return acc_prob
 
     @staticmethod
     def remove_margins(tensor, margin_size, keep_left, keep_right):
         if not keep_left:
-            tensor = tensor[margin_size + 1:]  # remove left margin and CLS token
+            tensor = tensor[margin_size + 1 :]  # remove left margin and CLS token
         if not keep_right:
-            tensor = tensor[:tensor.shape[0] - margin_size - 1]  # remove right margin and SEP token
+            tensor = tensor[: tensor.shape[0] - margin_size - 1]  # remove right margin and SEP token
         return tensor
 
-    def apply_punctuation_and_capitalization_predictions(self, query, punct_preds, capit_preds):
+    def apply_punct_capit_predictions(self, query, punct_preds, capit_preds):
         query = query.strip().split()
-        assert len(query) == len(punct_preds), \
-            f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}, query[:30]={query[:30]}"
-        assert len(query) == len(capit_preds), \
-            f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}, query[:30]={query[:30]}"
+        assert len(query) == len(
+            punct_preds
+        ), f"len(query)={len(query)} len(punct_preds)={len(punct_preds)}, query[:30]={query[:30]}"
+        assert len(query) == len(
+            capit_preds
+        ), f"len(query)={len(query)} len(capit_preds)={len(capit_preds)}, query[:30]={query[:30]}"
         punct_ids_to_labels = {v: k for k, v in self._cfg.punct_label_ids.items()}
         capit_ids_to_labels = {v: k for k, v in self._cfg.capit_label_ids.items()}
         query_with_punct_and_capit = ''
@@ -416,31 +418,22 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
         return query_with_punct_and_capit[:-1]
 
     def _transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
-            self,
-            punct_logits,
-            capit_logits,
-            subtokens_mask,
-            start_word_ids,
-            margin,
-            is_first,
-            is_last,
-            query_ids,
+        self, punct_logits, capit_logits, subtokens_mask, start_word_ids, margin, is_first, is_last, query_ids,
     ):
         new_start_word_ids = list(start_word_ids)
         subtokens_mask = subtokens_mask > 0.5
         b_punct_probs, b_capit_probs = [], []
         for i, (first, last, q_i, pl, cl, stm) in enumerate(
-                zip(is_first, is_last, query_ids, punct_logits, capit_logits, subtokens_mask)):
+            zip(is_first, is_last, query_ids, punct_logits, capit_logits, subtokens_mask)
+        ):
             if not first:
-                new_start_word_ids[i] += torch.count_nonzero(stm[:margin + 1]).numpy()  # + 1 is for [CLS] token
+                new_start_word_ids[i] += torch.count_nonzero(stm[: margin + 1]).numpy()  # + 1 is for [CLS] token
             stm = self.remove_margins(stm, margin, keep_left=first, keep_right=last)
             for b_probs, logits in [(b_punct_probs, pl), (b_capit_probs, cl)]:
-                b_probs.append(
-                    torch.nn.functional.softmax(
-                        self.remove_margins(logits, margin, keep_left=first, keep_right=last)[stm],
-                        dim=-1,
-                    ).detach().cpu().numpy()
+                p = torch.nn.functional.softmax(
+                    self.remove_margins(logits, margin, keep_left=first, keep_right=last)[stm], dim=-1,
                 )
+                b_probs.append(p.detach().cpu().numpy())
         return b_punct_probs, b_capit_probs, new_start_word_ids
 
     def add_punctuation_capitalization(
@@ -486,58 +479,52 @@ class PunctuationCapitalizationModel(NLPModel, Exportable):
             logging.info(f'Using batch size {batch_size} for inference')
         result = []
         mode = self.training
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        d = 'cuda' if torch.cuda.is_available() else 'cpu'
         try:
             self.eval()
-            self = self.to(device)
+            self = self.to(d)
             infer_datalayer = self._setup_infer_dataloader(queries, batch_size, max_seq_length, step, margin)
 
-            # store predictions for all queries in a single list
+            # Predicted labels for queries. List of labels for every query
             all_punct_preds, all_capit_preds = [[] for _ in queries], [[] for _ in queries]
+            # Accumulated probabilities (or product of probabilities acquired from different segments) of punctuation
+            # and capitalization. Probabilities for words in query are extracted using `subtokens_mask`.Probabilities
+            # for newly processed words are appended to the accumulated probabilities. If probabilities for a word are
+            # already present in `acc_probs`, old probabilities are replaced with multiplication of old probabilities
+            # and probabilities acquired from new segment. Segments are processed in the order they are present in an
+            # input query. When all segments with a word are processed, the label with highest probability is chosen
+            # and appended to an appropriate list in `all_preds`. After adding prediction to `all_preds`,
+            # probabilities for a word are removed from `acc_probs`
             acc_punct_probs, acc_capit_probs = [None for _ in queries], [None for _ in queries]
             for batch_i, batch in enumerate(infer_datalayer):
-                input_ids, input_type_ids, input_mask, subtokens_mask, start_word_ids, query_ids, is_first, is_last = batch
+                inp_ids, inp_type_ids, inp_mask, subtokens_mask, start_word_ids, query_ids, is_first, is_last = batch
                 punct_logits, capit_logits = self.forward(
-                    input_ids=input_ids.to(device),
-                    token_type_ids=input_type_ids.to(device),
-                    attention_mask=input_mask.to(device),
+                    input_ids=inp_ids.to(d), token_type_ids=inp_type_ids.to(d), attention_mask=inp_mask.to(d),
                 )
-                b_punct_probs, b_capit_probs, start_word_ids = self._transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
-                    punct_logits,
-                    capit_logits,
-                    subtokens_mask,
-                    start_word_ids,
-                    margin,
-                    is_first,
-                    is_last,
-                    query_ids,
+                _res = self._transform_logit_to_prob_and_remove_margins_and_extract_word_probs(
+                    punct_logits, capit_logits, subtokens_mask, start_word_ids, margin, is_first, is_last, query_ids
                 )
+                punct_probs, capit_probs, start_word_ids = _res
                 for i, (q_i, start_word_id, bpp_i, bcp_i) in enumerate(
-                        zip(query_ids, start_word_ids, b_punct_probs, b_capit_probs)):
+                    zip(query_ids, start_word_ids, punct_probs, capit_probs)
+                ):
                     for all_preds, acc_probs, b_probs_i in [
-                        (all_punct_preds, acc_punct_probs, bpp_i), (all_capit_preds, acc_capit_probs, bcp_i)
+                        (all_punct_preds, acc_punct_probs, bpp_i),
+                        (all_capit_preds, acc_capit_probs, bcp_i),
                     ]:
                         if acc_probs[q_i] is None:
                             acc_probs[q_i] = b_probs_i
                         else:
-                            all_preds_before_move = all_preds[q_i]
-                            acc_probs_before_move = acc_probs[q_i]
-                            all_preds[q_i], acc_probs[q_i] = \
-                                self.move_from_accumulated_probabilities_to_token_predictions(
-                                    all_preds[q_i], acc_probs[q_i], start_word_id - len(all_preds[q_i]))
+                            all_preds[q_i], acc_probs[q_i] = self.move_acc_probs_to_token_preds(
+                                all_preds[q_i], acc_probs[q_i], start_word_id - len(all_preds[q_i]),
+                            )
                             acc_probs[q_i] = self.update_accumulated_probabilities(acc_probs[q_i], b_probs_i)
-                                
             for all_preds, acc_probs in [(all_punct_preds, acc_punct_probs), (all_capit_preds, acc_capit_probs)]:
                 for q_i, (pred, prob) in enumerate(zip(all_preds, acc_probs)):
                     if prob is not None:
-                        all_preds[q_i], acc_probs[q_i] = \
-                            self.move_from_accumulated_probabilities_to_token_predictions(pred, prob, len(prob))
+                        all_preds[q_i], acc_probs[q_i] = self.move_acc_probs_to_token_preds(pred, prob, len(prob))
             for i, query in enumerate(queries):
-                result.append(
-                    self.apply_punctuation_and_capitalization_predictions(
-                        query, all_punct_preds[i], all_capit_preds[i]
-                    )
-                )
+                result.append(self.apply_punct_capit_predictions(query, all_punct_preds[i], all_capit_preds[i]))
         finally:
             # set mode back to its original value
             self.train(mode=mode)
