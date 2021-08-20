@@ -1044,7 +1044,7 @@ class _TarredAudioToTextDataset(IterableDataset):
         audio_filestream.close()
 
         # Audio features
-        f, fl = features, torch.tensor(features.shape[0]).long()
+        f, fl = features, torch.tensor(features.shape[-1]).long()
 
         # Text features
         t, tl = manifest_entry.text_tokens, len(manifest_entry.text_tokens)
