@@ -57,6 +57,7 @@ def _speech_collate_fn(batch, pad_id):
     if has_audio:
         max_audio_len = max(audio_lengths).item()
     max_tokens_len = max(tokens_lengths).item()
+    logging.info(f"max_audio_len is {max_audio_len}, audio_lens is {audio_lengths}")
 
     audio_signal, tokens = [], []
     for sig, sig_len, tokens_i, tokens_i_len in batch:
