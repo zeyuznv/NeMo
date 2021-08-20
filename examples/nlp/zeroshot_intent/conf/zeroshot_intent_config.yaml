@@ -1,10 +1,22 @@
-# GLUE Benchmark with pre-trained BERT models
-supported_tasks: &supported_tasks ['cola', 'sst-2', 'mrpc', 'sts-b', 'qqp', 'mnli', 'qnli', 'rte', 'wnli']
+# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+# Config file for ZeroShot Intent recognition (BERT model trained on MNLI dataset)
 trainer:
   gpus: 2 # the number of gpus, 0 for CPU
   num_nodes: 1
-  max_epochs: 3
+  max_epochs: 1
   max_steps: null # precedence over max_epochs
   accumulate_grad_batches: 1 # accumulates grads every k batches
   amp_level: O0 # O1/O2 for mixed precision
@@ -14,8 +26,6 @@ trainer:
   logger: False  # Provided by exp_manager
 
 model:
-  task_name: &task_name mnli # choose from: ["cola", "sst-2", "mrpc", "sts-b", "qqp", "mnli", "qnli", "rte", "wnli"] GLUE task name, MNLI includes both matched and mismatched dev sets
-  supported_tasks: *supported_tasks
   output_dir: null # dir to write write predictions
   nemo_path: null # filename to save the model and associated artifacts to .nemo file
   dataset:
@@ -71,13 +81,8 @@ model:
 
 exp_manager:
   exp_dir: null  # exp_dir for your experiment, if None, defaults to "./NeMo_experiments"
-  name: *task_name # The name of your model
+  name: "ZeroShotIntentRecognition" # The name of your model
   create_tensorboard_logger: True  # Whether you want exp_manger to create a tb logger
   create_checkpoint_callback: True  # Whether you want exp_manager to create a modelcheckpoint callback
 
-hydra:
-  run:
-    dir: .
-  job_logging:
-    root:
-      handlers: null
+pretrained_model:  mnli_megatron.nemo # pretrained ZeroShot Intent model used for the evaluation (.nemo file)
