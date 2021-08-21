@@ -78,7 +78,7 @@ def main(cfg):
     logging.info(f'Hydra config: {OmegaConf.to_yaml(cfg)}')
 
     #trainer = pl.Trainer(plugins=[DDPPlugin(find_unused_parameters=False)],*cfg.trainer)
-    trainer = pl.Trainer(*cfg.trainer)
+    trainer = pl.Trainer(**cfg.trainer)
     exp_manager(trainer, cfg.get("exp_manager", None))
     asr_model = EncDecCTCModelBPE(cfg=cfg.model, trainer=trainer)
 
