@@ -34,7 +34,7 @@ def mic_source_dist_range(room_size, T60, scene_type):
 # train_num = 7861
 # val_num = 742
 # test_num = 1088
-mics_num = 8
+# mics_num = 8
 
 # Room's size
 room_len_x_min = 4
@@ -47,7 +47,7 @@ room_len_z = 2.7
 margin = 0.5
 
 
-def generate_scenes(scenes_num, scene_type, T60):
+def generate_scenes(scenes_num, scene_type, T60, mics_num):
     """
     Generates random rooms with random source and microphones positions
     :param scenes_num: How many scenes (=rooms with source-microphones setups) to generate.

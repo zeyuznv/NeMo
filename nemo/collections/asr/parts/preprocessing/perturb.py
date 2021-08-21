@@ -318,7 +318,7 @@ class MultiChannelPerturbation(Perturbation):
 
         # Generate a scene
         scene_type='random'
-        scene = generate_scenes(1, scene_type, T60_scene)[0]
+        scene = generate_scenes(1, scene_type, T60_scene, self.mics_num)[0]
 
         # Generate RIRs
         fs=data.sample_rate
