@@ -297,9 +297,9 @@ class MultiChannelPerturbation(Perturbation):
         shift_impulse (bool): Shift impulse response to adjust for delay at the beginning
     """
 
-    def __init__(self):
+    def __init__(self, mics_num=8):
         self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
-        self.mics_num = 8
+        self.mics_num = mics_num
 
     def generate_rirs(self, room_sz, pos_src, pos_rcv, T60, fs):
         # print(room_sz, pos_src, pos_rcv, sep='\n')
