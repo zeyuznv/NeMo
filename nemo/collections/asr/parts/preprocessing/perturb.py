@@ -53,6 +53,7 @@ from nemo.collections.common.parts.preprocessing import collections, parsers
 from nemo.utils import logging
 from nemo.collections.asr.parts.utils.scene_gen import generate_scenes
 import gpuRIR
+import pickle
 from scipy.signal import lfilter
 try:
     from nemo.collections.asr.parts.utils import numba_utils
@@ -297,9 +298,14 @@ class MultiChannelPerturbation(Perturbation):
         shift_impulse (bool): Shift impulse response to adjust for delay at the beginning
     """
 
-    def __init__(self, mics_num=8):
+    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="biurev_rir", num_rir_files=100):
         self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
         self.mics_num = mics_num
+        self.rir_dir = rir_dir
+        self.num_rir_files = num_rir_files
+        self.rir_prefix = rir_prefix
+        self.rir_index = 0
+        self.rirs_from_file = []
 
     def generate_rirs(self, room_sz, pos_src, pos_rcv, T60, fs):
         # print(room_sz, pos_src, pos_rcv, sep='\n')
@@ -311,22 +317,41 @@ class MultiChannelPerturbation(Perturbation):
         RIRs = gpuRIR.simulateRIR(room_sz, beta, pos_src, pos_rcv, nb_img, Tmax, fs, Tdiff=Tdiff, mic_pattern=mic_pattern)
         # RIRs = np.random.randn(1, len(pos_rcv), int(np.round(Tmax*fs)))
         return RIRs
+    def open_and_read_rir_file(self):
+        fileid = random.randint(0,100)
+        fname = os.path.join(self.rir_dir, self.rir_prefix + f"_{fileid:02d}" + ".pkl")
+        with open(fname, "rb") as f:
+            self.rirs_from_file = pickle.load(f)
+            self.rir_index = 0
+
 
     def perturb(self, data):
-        np.random.shuffle(self.T60)
-        T60_scene = self.T60[0]
+        if self.rir_dir is None:
+            np.random.shuffle(self.T60)
+            T60_scene = self.T60[0]
 
-        # Generate a scene
-        scene_type='random'
-        scene = generate_scenes(1, scene_type, T60_scene, self.mics_num)[0]
+            # Generate a scene
+            scene_type='random'
+            scene = generate_scenes(1, scene_type, T60_scene, self.mics_num)[0]
 
-        # Generate RIRs
-        fs=data.sample_rate
-        RIRs = self.generate_rirs(scene['room_dim'], scene['src_pos'], scene['mic_pos'], T60_scene, fs)
+            # Generate RIRs
+            fs=data.sample_rate
+            RIRs = self.generate_rirs(scene['room_dim'], scene['src_pos'], scene['mic_pos'], T60_scene, fs)
+            rirs = RIRs[0]
+        else:
+            if self.rir_index == len(self.rirs_from_file):
+                self.open_and_read_rir_file()
+
+            rirs = self.rirs_from_file[self.rir_index]
+            # shuffle rir order for more variation in offline data
+            np.random.shuffle(rirs)
+            self.rir_index += 1
 
         # Generate reverberant speech
         rev_signals = np.zeros([self.mics_num, len(data._samples)])
-        for j, rir in enumerate(RIRs[0]):
+        for j, rir in enumerate(rirs):
+            if j == self.mics_num:
+                break
             rev_signals[j] = lfilter(rir, 1, data._samples)
         data._samples = np.vstack(rev_signals)
         data._channels = self.mics_num
