@@ -55,6 +55,7 @@ from nemo.collections.asr.parts.utils.scene_gen import generate_scenes
 import gpuRIR
 import pickle
 from scipy.signal import lfilter
+
 try:
     from nemo.collections.asr.parts.utils import numba_utils
 
@@ -64,7 +65,6 @@ except (ImportError, ModuleNotFoundError):
 
 
 def read_one_audiosegment(manifest, target_sr, rng, tarred_audio=False, audio_dataset=None):
-
     if tarred_audio:
         if audio_dataset is None:
             raise TypeError("Expected augmentation dataset but got None")
@@ -287,6 +287,7 @@ class GainPerturbation(Perturbation):
         # logging.debug("gain: %d", gain)
         data._samples = data._samples * (10.0 ** (gain / 20.0))
 
+
 class MultiChannelPerturbation(Perturbation):
     """
     Convolves audio with a Room Impulse Response.
@@ -298,7 +299,8 @@ class MultiChannelPerturbation(Perturbation):
         shift_impulse (bool): Shift impulse response to adjust for delay at the beginning
     """
 
-    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="biurev_rir", num_rir_files=100):
+    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="biurev_rir",
+                 num_rir_files=100):
         self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
         self.mics_num = mics_num
         self.rir_dir = rir_dir
@@ -312,18 +314,19 @@ class MultiChannelPerturbation(Perturbation):
         mic_pattern = "omni"  # Receiver polar pattern
         beta = gpuRIR.beta_SabineEstimation(room_sz, T60)  # Reflection coefficients
         Tmax = T60 * 0.8  # Time to stop the simulation [s]
-        Tdiff = 0.1 # ISM stops here and the gaussian noise with an exponential envelope starts
+        Tdiff = 0.1  # ISM stops here and the gaussian noise with an exponential envelope starts
         nb_img = gpuRIR.t2n(T60, room_sz)  # Number of image sources in each dimension
-        RIRs = gpuRIR.simulateRIR(room_sz, beta, pos_src, pos_rcv, nb_img, Tmax, fs, Tdiff=Tdiff, mic_pattern=mic_pattern)
+        RIRs = gpuRIR.simulateRIR(room_sz, beta, pos_src, pos_rcv, nb_img, Tmax, fs, Tdiff=Tdiff,
+                                  mic_pattern=mic_pattern)
         # RIRs = np.random.randn(1, len(pos_rcv), int(np.round(Tmax*fs)))
         return RIRs
+
     def open_and_read_rir_file(self):
-        fileid = random.randint(0,100)
+        fileid = random.randint(0, self.num_rir_files - 1)
         fname = os.path.join(self.rir_dir, self.rir_prefix + f"_{fileid:02d}" + ".pkl")
         with open(fname, "rb") as f:
             self.rirs_from_file = pickle.load(f)
             self.rir_index = 0
-
 
     def perturb(self, data):
         if self.rir_dir is None:
@@ -331,11 +334,11 @@ class MultiChannelPerturbation(Perturbation):
             T60_scene = self.T60[0]
 
             # Generate a scene
-            scene_type='random'
+            scene_type = 'random'
             scene = generate_scenes(1, scene_type, T60_scene, self.mics_num)[0]
 
             # Generate RIRs
-            fs=data.sample_rate
+            fs = data.sample_rate
             RIRs = self.generate_rirs(scene['room_dim'], scene['src_pos'], scene['mic_pos'], T60_scene, fs)
             rirs = RIRs[0]
         else:
@@ -355,6 +358,7 @@ class MultiChannelPerturbation(Perturbation):
             rev_signals[j] = lfilter(rir, 1, data._samples)
         data._samples = np.vstack(rev_signals)
         data._channels = self.mics_num
+
 
 class ImpulsePerturbation(Perturbation):
     """
@@ -450,15 +454,15 @@ class NoisePerturbation(Perturbation):
     """
 
     def __init__(
-        self,
-        manifest_path=None,
-        min_snr_db=10,
-        max_snr_db=50,
-        max_gain_db=300.0,
-        rng=None,
-        audio_tar_filepaths=None,
-        shuffle_n=100,
-        orig_sr=16000,
+            self,
+            manifest_path=None,
+            min_snr_db=10,
+            max_snr_db=50,
+            max_gain_db=300.0,
+            rng=None,
+            audio_tar_filepaths=None,
+            shuffle_n=100,
+            orig_sr=16000,
     ):
         self._manifest = collections.ASRAudioText(manifest_path, parser=parsers.make_parser([]), index_by_file_id=True)
         self._audiodataset = None
@@ -512,13 +516,13 @@ class NoisePerturbation(Perturbation):
 
         if noise._samples.shape[0] < data._samples.shape[0]:
             noise_idx = self._rng.randint(0, data._samples.shape[0] - noise._samples.shape[0])
-            data._samples[noise_idx : noise_idx + noise._samples.shape[0]] += noise._samples
+            data._samples[noise_idx: noise_idx + noise._samples.shape[0]] += noise._samples
 
         else:
             data._samples += noise._samples
 
     def perturb_with_foreground_noise(
-        self, data, noise, data_rms=None, max_noise_dur=2, max_additions=1,
+            self, data, noise, data_rms=None, max_noise_dur=2, max_additions=1,
     ):
         snr_db = self._rng.uniform(self._min_snr_db, self._max_snr_db)
         if not data_rms:
@@ -537,10 +541,10 @@ class NoisePerturbation(Perturbation):
             noise_samples *= 10.0 ** (noise_gain_db / 20.0)
 
             if noise_samples.shape[0] > data._samples.shape[0]:
-                noise_samples = noise_samples[0 : data._samples.shape[0]]
+                noise_samples = noise_samples[0: data._samples.shape[0]]
 
             noise_idx = self._rng.randint(0, data._samples.shape[0] - noise_samples.shape[0])
-            data._samples[noise_idx : noise_idx + noise_samples.shape[0]] += noise_samples
+            data._samples[noise_idx: noise_idx + noise_samples.shape[0]] += noise_samples
 
 
 class WhiteNoisePerturbation(Perturbation):
@@ -596,24 +600,24 @@ class RirAndNoisePerturbation(Perturbation):
     """
 
     def __init__(
-        self,
-        rir_manifest_path=None,
-        rir_prob=0.5,
-        noise_manifest_paths=None,
-        min_snr_db=0,
-        max_snr_db=50,
-        rir_tar_filepaths=None,
-        rir_shuffle_n=100,
-        noise_tar_filepaths=None,
-        apply_noise_rir=False,
-        orig_sample_rate=None,
-        max_additions=5,
-        max_duration=2.0,
-        bg_noise_manifest_paths=None,
-        bg_min_snr_db=10,
-        bg_max_snr_db=50,
-        bg_noise_tar_filepaths=None,
-        bg_orig_sample_rate=None,
+            self,
+            rir_manifest_path=None,
+            rir_prob=0.5,
+            noise_manifest_paths=None,
+            min_snr_db=0,
+            max_snr_db=50,
+            rir_tar_filepaths=None,
+            rir_shuffle_n=100,
+            noise_tar_filepaths=None,
+            apply_noise_rir=False,
+            orig_sample_rate=None,
+            max_additions=5,
+            max_duration=2.0,
+            bg_noise_manifest_paths=None,
+            bg_min_snr_db=10,
+            bg_max_snr_db=50,
+            bg_noise_tar_filepaths=None,
+            bg_orig_sample_rate=None,
     ):
 
         logging.info("Called Rir aug init")
@@ -722,7 +726,7 @@ class TranscodePerturbation(Perturbation):
             )
 
         new_data = AudioSegment.from_file(transcoded_f.name, target_sr=16000)
-        data._samples = new_data._samples[0 : data._samples.shape[0]]
+        data._samples = new_data._samples[0: data._samples.shape[0]]
         return
 
 
