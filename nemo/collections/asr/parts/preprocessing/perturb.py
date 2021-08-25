@@ -299,8 +299,8 @@ class MultiChannelPerturbation(Perturbation):
         shift_impulse (bool): Shift impulse response to adjust for delay at the beginning
     """
 
-    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="biurev_rir",
-                 num_rir_files=100):
+    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="_rir",
+                 num_rir_files=100, bypass = False):
         self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
         self.mics_num = mics_num
         self.rir_dir = rir_dir
@@ -308,6 +308,7 @@ class MultiChannelPerturbation(Perturbation):
         self.rir_prefix = rir_prefix
         self.rir_index = 0
         self.rirs_from_file = []
+        self.bypass = bypass
 
     def generate_rirs(self, room_sz, pos_src, pos_rcv, T60, fs):
         # print(room_sz, pos_src, pos_rcv, sep='\n')
@@ -355,7 +356,10 @@ class MultiChannelPerturbation(Perturbation):
         for j, rir in enumerate(rirs):
             if j == self.mics_num:
                 break
-            rev_signals[j] = lfilter(rir, 1, data._samples)
+            if self.bypass:
+                rev_signals[j] = data._samples[:]
+            else:
+                rev_signals[j] = lfilter(rir, 1, data._samples)
         data._samples = np.vstack(rev_signals)
         data._channels = self.mics_num
 
