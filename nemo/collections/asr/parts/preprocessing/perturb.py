@@ -299,8 +299,8 @@ class MultiChannelPerturbation(Perturbation):
         shift_impulse (bool): Shift impulse response to adjust for delay at the beginning
     """
 
-    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="_rir",
-                 num_rir_files=100, bypass = False):
+    def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="biurev_rir",
+                 num_rir_files=50, bypass = False, use_lfilter=False, rir_reuse_factor=100):
         self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
         self.mics_num = mics_num
         self.rir_dir = rir_dir
@@ -309,6 +309,8 @@ class MultiChannelPerturbation(Perturbation):
         self.rir_index = 0
         self.rirs_from_file = []
         self.bypass = bypass
+        self.use_lfilter = use_lfilter
+        self.rir_reuse_factor = rir_reuse_factor
 
     def generate_rirs(self, room_sz, pos_src, pos_rcv, T60, fs):
         # print(room_sz, pos_src, pos_rcv, sep='\n')
@@ -343,7 +345,7 @@ class MultiChannelPerturbation(Perturbation):
             RIRs = self.generate_rirs(scene['room_dim'], scene['src_pos'], scene['mic_pos'], T60_scene, fs)
             rirs = RIRs[0]
         else:
-            if self.rir_index == len(self.rirs_from_file):
+            if self.rir_index//self.rir_reuse_factor == len(self.rirs_from_file):
                 self.open_and_read_rir_file()
 
             rirs = self.rirs_from_file[self.rir_index]
@@ -358,8 +360,10 @@ class MultiChannelPerturbation(Perturbation):
                 break
             if self.bypass:
                 rev_signals[j] = data._samples[:]
-            else:
+            elif self.use_lfilter:
                 rev_signals[j] = lfilter(rir, 1, data._samples)
+            else:
+                rev_signals[j] = signal.fftconvolve(data._samples, rir, "same")
         data._samples = np.vstack(rev_signals)
         data._channels = self.mics_num
 
