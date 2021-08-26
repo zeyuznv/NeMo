@@ -299,7 +299,7 @@ class MultiChannelPerturbation(Perturbation):
     """
 
     def __init__(self, mics_num=8, rir_dir="/home/jbalam/nemo/biurevgen/BIUREVgen/train_rirs", rir_prefix="biurev_rir",
-                 num_rir_files=50, bypass = False, use_lfilter=False, rir_reuse_factor=100):
+                 num_rir_files=50, bypass = False, use_lfilter=False, rir_reuse_factor=100, multi_channel=True):
         self.T60 = [0.2, 0.4, 0.7, 1]  # Time for the RIR to reach 60dB of attenuation [s]
         self.mics_num = mics_num
         self.rir_dir = rir_dir
@@ -310,6 +310,7 @@ class MultiChannelPerturbation(Perturbation):
         self.bypass = bypass
         self.use_lfilter = use_lfilter
         self.rir_reuse_factor = rir_reuse_factor
+        self.multi_channel = multi_channel
 
     def generate_rirs(self, room_sz, pos_src, pos_rcv, T60, fs):
         # print(room_sz, pos_src, pos_rcv, sep='\n')
@@ -364,8 +365,9 @@ class MultiChannelPerturbation(Perturbation):
                 rev_signals[j] = lfilter(rir, 1, data._samples)
             else:
                 rev_signals[j] = signal.fftconvolve(data._samples, rir, "same")
-        data._samples = np.vstack(rev_signals)
-        data._channels = self.mics_num
+        if self.multi_channel:
+            data._samples = np.vstack(rev_signals)
+            data._channels = self.mics_num
 
 
 class ImpulsePerturbation(Perturbation):
