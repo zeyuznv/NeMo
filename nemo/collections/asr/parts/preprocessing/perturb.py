@@ -52,7 +52,6 @@ from nemo.collections.asr.parts.preprocessing.segment import AudioSegment
 from nemo.collections.common.parts.preprocessing import collections, parsers
 from nemo.utils import logging
 from nemo.collections.asr.parts.utils.scene_gen import generate_scenes
-import gpuRIR
 import pickle
 from scipy.signal import lfilter
 
@@ -333,6 +332,7 @@ class MultiChannelPerturbation(Perturbation):
 
     def perturb(self, data):
         if self.rir_dir is None:
+            import gpuRIR
             np.random.shuffle(self.T60)
             T60_scene = self.T60[0]
 
