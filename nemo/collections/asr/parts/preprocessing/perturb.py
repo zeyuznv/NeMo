@@ -348,7 +348,7 @@ class MultiChannelPerturbation(Perturbation):
             if self.rir_index//self.rir_reuse_factor == len(self.rirs_from_file):
                 self.open_and_read_rir_file()
 
-            rirs = self.rirs_from_file[self.rir_index]
+            rirs = self.rirs_from_file[self.rir_index % self.num_rir_files]
             # shuffle rir order for more variation in offline data
             np.random.shuffle(rirs)
             self.rir_index += 1
