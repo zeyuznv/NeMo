@@ -2,9 +2,9 @@ import argparse
 import contextlib
 import json
 import re
+import wave
 from pathlib import Path
 
-import wave
 from bs4 import BeautifulSoup
 
 
@@ -16,24 +16,9 @@ SOUNDS_DESCR = re.compile(r'^\([^)]+\)( \([^)]+\))*$')  # (Applause) (Laughter) 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--audio-dir",
-        "-a",
-        required=True,
-        type=Path,
-    )
-    parser.add_argument(
-        "--src-text",
-        "-t",
-        required=True,
-        type=Path,
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        required=True,
-        type=Path,
-    )
+    parser.add_argument("--audio-dir", "-a", required=True, type=Path)
+    parser.add_argument("--src-text", "-t", required=True, type=Path)
+    parser.add_argument("--output", "-o", required=True, type=Path)
     args = parser.parse_args()
     args.audio_dir = args.audio_dir.expanduser()
     if not args.audio_dir.is_dir():
@@ -60,16 +45,12 @@ def get_talk_id_to_text(src_text):
     soup = BeautifulSoup(text)
     docs = soup.findAll("doc")
     result = {
-        doc["docid"]:
-            SPACE_DEDUP.sub(
-                ' ', NOT_TRANSCRIPT_PATTERN.sub(
-                    ' ',
-                    ' '.join(
-                        [elem.text for elem in doc.findAll("seg")
-                         if not SOUNDS_DESCR.match(elem.text)]
-                    ).lower()
-                )
-            )
+        doc["docid"]: SPACE_DEDUP.sub(
+            ' ',
+            NOT_TRANSCRIPT_PATTERN.sub(
+                ' ', ' '.join([elem.text for elem in doc.findAll("seg") if not SOUNDS_DESCR.match(elem.text)]).lower()
+            ),
+        )
         for doc in docs
     }
     return result
@@ -92,12 +73,15 @@ def main():
             f"Number of documents described in the XML file {args.src_text} is not equal to the number "
             f"of wav files with talk ids found in the directory {args.audio_dir}.\nNumber of documents in the XML "
             f"file: {len(talk_id_to_text)}, number of wav files: {len(talk_id_to_wav_file)}.\n.wav files: "
-            f"{talk_id_to_wav_file}")
+            f"{talk_id_to_wav_file}"
+        )
     for talk_id, text in talk_id_to_text.items():
         if manifest:
             manifest += '\n'
         filepath = talk_id_to_wav_file[talk_id]
-        manifest += json.dumps({"audio_filepath": str(filepath), "offset": 0.0, "duration": get_wav_duration(filepath), "text": text})
+        manifest += json.dumps(
+            {"audio_filepath": str(filepath), "offset": 0.0, "duration": get_wav_duration(filepath), "text": text}
+        )
     args.output.parent.mkdir(exist_ok=True, parents=True)
     with args.output.open('w') as f:
         f.write(manifest)

@@ -54,7 +54,7 @@ def split_file(talk_id, file_markup, file_path, output_dir):
     seg_wavs.mkdir(exist_ok=True, parents=True)
     audio = AudioSegment.from_wav(file_path)
     for i, seg_time in enumerate(file_markup):
-        audio_seg = audio[seg_time[0] * NUMBER_OF_MS_IN_1_SEC:(seg_time[0] + seg_time[1]) * NUMBER_OF_MS_IN_1_SEC]
+        audio_seg = audio[seg_time[0] * NUMBER_OF_MS_IN_1_SEC : (seg_time[0] + seg_time[1]) * NUMBER_OF_MS_IN_1_SEC]
         save_path = seg_wavs / Path(str(i) + '.wav')
         audio_seg.export(save_path, format="wav")
 

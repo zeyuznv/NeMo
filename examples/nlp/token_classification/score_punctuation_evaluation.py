@@ -6,16 +6,8 @@ from pathlib import Path
 from sklearn.metrics import accuracy_score, f1_score
 
 
-CAPIT_LABELS_TO_NUMBERS = {
-    "O": 0,
-    "U": 1,
-}
-PUNCT_LABELS_TO_NUMBERS = {
-    "O": 0,
-    ",": 1,
-    ".": 2,
-    "?": 3,
-}
+CAPIT_LABELS_TO_NUMBERS = {"O": 0, "U": 1}
+PUNCT_LABELS_TO_NUMBERS = {"O": 0, ",": 1, ".": 2, "?": 3}
 
 
 SEPARATORS = re.compile(r"\s+")
@@ -48,7 +40,7 @@ def compute_scores(preds_text, labels_text):
         "capitalization": {
             "accuracy": accuracy_score(capit_labels, capit_preds),
             "f1": f1_score(capit_labels, capit_preds),
-        }
+        },
     }
 
 

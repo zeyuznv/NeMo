@@ -54,7 +54,7 @@ def load_manifest_text(manifest, text_key):
 def split_into_segments(text, size):
     segments = []
     for i in range(0, len(text), size):
-        segments.append(text[i:i + size])
+        segments.append(text[i : i + size])
     return segments
 
 
@@ -62,10 +62,10 @@ def insert_commas_in_long_numbers(match):
     number = match.group(0)
     result = ""
     count = 0
-    for i in range(0, len(number)-3, 3):
-        result = ',' + number[len(number)-i-3:len(number)-i] + result
+    for i in range(0, len(number) - 3, 3):
+        result = ',' + number[len(number) - i - 3 : len(number) - i] + result
         count += 3
-    result = number[:len(number) - count] + result
+    result = number[: len(number) - count] + result
     return result
 
 
@@ -84,7 +84,8 @@ def main():
     max_seq_len = 64
     processed = []
     processed_texts = model.add_punctuation_capitalization(
-        texts, batch_size=MAX_NUM_SUBTOKENS_IN_INPUT // max_seq_len, max_seq_length=max_seq_len, step=8, margin=16)
+        texts, batch_size=MAX_NUM_SUBTOKENS_IN_INPUT // max_seq_len, max_seq_length=max_seq_len, step=8, margin=16
+    )
     for text in processed_texts:
         processed.append(DECIMAL.sub(decimal_repl, SPACE_DEDUP.sub(' ', text)))
         # processed.append(

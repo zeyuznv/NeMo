@@ -27,12 +27,7 @@ SENTENCE_ENDINGS = ".?!"
 
 def get_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
-    parser.add_argument(
-        "input_files",
-        help="List of files with input data",
-        nargs="+",
-        type=Path,
-    )
+    parser.add_argument("input_files", help="List of files with input data", nargs="+", type=Path)
     parser.add_argument(
         "--output_dir",
         "-o",
@@ -56,20 +51,8 @@ def get_args():
         help="Number of sequences in the created dataset. This number includes sequences in train, dev, and test "
         "datasets. By default it is equal to the total number of sentences in the input data.",
     )
-    parser.add_argument(
-        "--dev_size",
-        "-d",
-        help="Number of sequences in dev data.",
-        type=int,
-        default=10**4,
-    )
-    parser.add_argument(
-        "--test_ratio",
-        "-t",
-        help="Percentage of test data.",
-        type=float,
-        default=0.0,
-    )
+    parser.add_argument("--dev_size", "-d", help="Number of sequences in dev data.", type=int, default=10 ** 4)
+    parser.add_argument("--test_ratio", "-t", help="Percentage of test data.", type=float, default=0.0)
     parser.add_argument(
         "--sequence_length_range",
         "-r",
@@ -77,7 +60,7 @@ def get_args():
         "using uniform distribution.",
         type=int,
         nargs=2,
-        default=[2, 64]
+        default=[2, 64],
     )
     parser.add_argument(
         "--percentage_segments_with_intact_sentences",
@@ -174,7 +157,7 @@ def preprocess_news_commentary(text):
             if line_idx == 1:
                 location_string = NEWS_COMMENTARY_LOCATION_LINE.match(line)
                 if location_string is not None:
-                    line = line[location_string.span()[1]:]
+                    line = line[location_string.span()[1] :]
                 discussion_text.append(line)
             elif line_idx > 1:
                 discussion_text.append(line)
@@ -192,10 +175,10 @@ def cut_words(s, start_word, num_words):
     s = ''.join(words[start_word : start_word + num_words])
     ss = STRIP_START.match(s)
     if ss is not None:
-        s = s[ss.span()[1]:]
+        s = s[ss.span()[1] :]
     se = STRIP_END.match(s)
     if se is not None:
-        s = s[:se.span()[0]]
+        s = s[: se.span()[0]]
     return s
 
 
@@ -293,9 +276,7 @@ def create_not_whole_sentence_segments(
     result = []
     remaining_by_docs = deepcopy(remaining_by_docs)
     yet_to_cut_by_number_of_words = calculate_how_many_remain_to_cut(
-        number_of_words_stats,
-        size,
-        percentage_segments_with_intact_sentences
+        number_of_words_stats, size, percentage_segments_with_intact_sentences
     )
     nw_i = 0
     done = not bool(yet_to_cut_by_number_of_words)
@@ -370,7 +351,10 @@ def main():
     if args.size is None:
         args.size = number_of_sentences_in_input
     sentences_by_number_of_words = arrange_sentences_by_number_of_words(all_docs, args.sequence_length_range)
-    if sum([len(x) for x in sentences_by_number_of_words.values()]) < args.size * args.percentage_segments_with_intact_sentences / 100:
+    if (
+        sum([len(x) for x in sentences_by_number_of_words.values()])
+        < args.size * args.percentage_segments_with_intact_sentences / 100
+    ):
         raise ValueError(
             f"Cannot find enough segments consisting of whole sentences to build dataset with {args.size} segments "
             f"and at least {args.percentage_segments_with_intact_sentences}% segments consisting of whole sentences. "
@@ -382,11 +366,7 @@ def main():
     for i in range(len(result)):
         result[i] = ' '.join(all_docs[result[i][0]][result[i][1] : result[i][2]])
     result += create_not_whole_sentence_segments(
-        all_docs,
-        selected_by_docs,
-        number_of_words_stats,
-        args.size,
-        args.percentage_segments_with_intact_sentences,
+        all_docs, selected_by_docs, number_of_words_stats, args.size, args.percentage_segments_with_intact_sentences,
     )
     random.shuffle(result)
     if args.dev_size > len(result):

@@ -38,7 +38,7 @@ ORDER = list(
             27383,
             17909,
             20519,
-        ]
+        ],
     )
 )
 
@@ -58,14 +58,9 @@ def get_talk_id_to_text(text):
     soup = BeautifulSoup(text)
     docs = soup.findAll("doc")
     result = {
-        doc["docid"]:
-            SPACE_DEDUP.sub(
-                ' ',
-                ' '.join(
-                    [elem.text for elem in doc.findAll("seg")
-                     if not SOUNDS_DESCR.match(elem.text)]
-                )
-            )
+        doc["docid"]: SPACE_DEDUP.sub(
+            ' ', ' '.join([elem.text for elem in doc.findAll("seg") if not SOUNDS_DESCR.match(elem.text)])
+        )
         for doc in docs
     }
     return result

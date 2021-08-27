@@ -50,8 +50,10 @@ def main():
         for k in src_filtered_segments.keys():
             if src_filtered_segments[k] != tgt_filtered_segments[k]:
                 docs_with_different_removals[k] = {"src": src_filtered_segments[k], "tgt": tgt_filtered_segments[k]}
-        raise ValueError(f"Different segments were removed from source and target sets. Different removals: "
-                         f"{docs_with_different_removals}")
+        raise ValueError(
+            f"Different segments were removed from source and target sets. Different removals: "
+            f"{docs_with_different_removals}"
+        )
     else:
         print("Removals:", src_filtered_segments)
     with args.output_src.open('w') as sf, args.output_tgt.open('w') as tf:

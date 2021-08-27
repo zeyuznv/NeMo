@@ -59,13 +59,17 @@ def get_wer_by_talkid(hyps, refs):
 
 def check_input_data(hyps, refs, hyp_file, ref_file):
     if len(hyps) != len(refs):
-        raise ValueError(f"Number of hypothesis texts {len(hyps)} in file {hyp_file} is not equal to number of "
-                         f"reference texts {len(refs)} in file {ref_file}")
+        raise ValueError(
+            f"Number of hypothesis texts {len(hyps)} in file {hyp_file} is not equal to number of "
+            f"reference texts {len(refs)} in file {ref_file}"
+        )
     if set(hyps.keys()) != set(refs.keys()):
-        raise ValueError(f"File with hypothesis texts contains hypotheses for .wav files "
-                         f"{set(hyps.keys()) - set(refs.keys())} which are not present in reference file {ref_file}.\n"
-                         f"File with reference texts contains references for .wav files "
-                         f"{set(refs.keys()) - set(hyps.keys())} which are not present in hypothesis file {hyp_file}")
+        raise ValueError(
+            f"File with hypothesis texts contains hypotheses for .wav files "
+            f"{set(hyps.keys()) - set(refs.keys())} which are not present in reference file {ref_file}.\n"
+            f"File with reference texts contains references for .wav files "
+            f"{set(refs.keys()) - set(hyps.keys())} which are not present in hypothesis file {hyp_file}"
+        )
 
 
 def main():

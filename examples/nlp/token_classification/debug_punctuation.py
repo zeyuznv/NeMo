@@ -1,5 +1,7 @@
 import sys
+
 sys.path = ["/home/lab/NeMo"] + sys.path
+
 from nemo.collections.nlp.models import PunctuationCapitalizationModel
 
 # to get the list of pre-trained models
@@ -12,15 +14,7 @@ text = "i had about five minutes before i was set to deliver a talk to a bunch o
 
 # try the model on a few examples
 
-texts = [
-    "",
-    "a",
-    "of",
-    "foo",
-    'how are you',
-    'great how about you',
-    text
-]
+texts = ["", "a", "of", "foo", 'how are you', 'great how about you', text]
 
 for m in [0, 1, 2, 3]:
     print(f"margin: {m}")
@@ -42,4 +36,3 @@ for m in [0, 1, 2, 3]:
                 continue
             for i, r in enumerate(res):
                 print(f"res[{i}]:", repr(res[i]))
-

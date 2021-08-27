@@ -1,7 +1,5 @@
 import json
 import re
-import json
-import re
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -260,12 +258,13 @@ def oh_repl(match):
 REPLACEMENTS = [
     (
         re.compile(
-            r'oh \b(' + '|'.join([rf'\b{str_num}\b' for str_num in list(TEXT_TO_NUMBERS.keys())[1:10]]) + r')\b'),
+            r'oh \b(' + '|'.join([rf'\b{str_num}\b' for str_num in list(TEXT_TO_NUMBERS.keys())[1:10]]) + r')\b'
+        ),
         oh_repl,
     ),
     (
         re.compile('|'.join([rf'\b{str_num}\b' for str_num in list(TEXT_TO_NUMBERS.keys())[::-1]]), flags=re.I),
-        str_to_number_repl
+        str_to_number_repl,
     ),
     (re.compile(r"\b([1-9]|1[1-9]) hundred((?: and)? [1-9][0-9]?)?", flags=re.I), hundred_repl),
     (
@@ -273,30 +272,34 @@ REPLACEMENTS = [
             # r"(\b(?:([1-9][0-9]{0,2}) billion)(?:( [1-9][0-9]{0,2}) million)?(?:( [1-9][0-9]{0,2}) thousand)?"
             # r"( [1-9][0-9]{0,2})?)|"
             # r"(\b(?:([1-9][0-9]{0,2}) million)(?:( [1-9][0-9]{0,2}) thousand)?( [1-9][0-9]{0,2})?)|"
-            r"(\b(?:([1-9][0-9]{0,2}) thousand)((?: and)? [1-9][0-9]{0,2})?)|"
-            r"(\b([1-9][0-9]{0,2}))",
+            r"(\b(?:([1-9][0-9]{0,2}) thousand)((?: and)? [1-9][0-9]{0,2})?)|(\b([1-9][0-9]{0,2}))",
             flags=re.IGNORECASE,
         ),
-        ten_power_3n_repl
+        ten_power_3n_repl,
     ),
     (re.compile(r"(?<![0-9] )\b([12][0-9]) ([0-9]{2})(?! [0-9])", flags=re.IGNORECASE), r"\1\2"),
-    (re.compile(r"(?:[0-9]+) point(?: [0-9])+", flags=re.I), decimal_repl),  # before replacing single digits parse decimals
+    (
+        re.compile(r"(?:[0-9]+) point(?: [0-9])+", flags=re.I),
+        decimal_repl,
+    ),  # before replacing single digits parse decimals
     (re.compile(r"(?<!\.)\b[0-9]\b(?!\.)", flags=re.I), single_number_to_str_repl),
     (re.compile(r"(?:[1-9][0-9]*|0)\.[0-9]*[1-9]"), decimal_deparse_repl),
     (re.compile(r"\s+", flags=re.I), " "),
     (
         re.compile(
-            f'({"|".join(MONTHS)})' + ' (' + "|".join([rf"\b{k}\b" for k in list(TEXT_TO_NUMBERS.values())[131:100:-1]]) + ')',
-            flags=re.I
+            f'({"|".join(MONTHS)})'
+            + ' ('
+            + "|".join([rf"\b{k}\b" for k in list(TEXT_TO_NUMBERS.values())[131:100:-1]])
+            + ')',
+            flags=re.I,
         ),
         month_day_repl,
     ),
     (
         re.compile(
-            rf"\b(?:{'|'.join(list(TEXT_TO_NUMBERS.values())[100:110])})\b(?! of ({'|'.join(MONTHS)})\b)",
-            flags=re.I
+            rf"\b(?:{'|'.join(list(TEXT_TO_NUMBERS.values())[100:110])})\b(?! of ({'|'.join(MONTHS)})\b)", flags=re.I
         ),
-        single_ordinal_to_str_repl
+        single_ordinal_to_str_repl,
     ),
 ]
 

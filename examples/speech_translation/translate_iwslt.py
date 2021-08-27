@@ -26,8 +26,10 @@ def get_args():
     if args.model_path is not None:
         args.model_path = args.model_path.expanduser()
     if args.model_path is None and args.model is None or args.model is not None and args.model_path is not None:
-        raise ValueError(f"Exactly one of parameters `--model` and `--model-path` has to be provided. "
-                         f"`--model={args.model}`, `--model-path={args.model_path}`.")
+        raise ValueError(
+            f"Exactly one of parameters `--model` and `--model-path` has to be provided. "
+            f"`--model={args.model}`, `--model-path={args.model_path}`."
+        )
     return args
 
 
@@ -59,8 +61,11 @@ def main():
     processed = []
     max_num_chars_in_segment = 512
     for text in texts:
-        segments = nltk.sent_tokenize(text) if args.one_sentence_segmentation \
+        segments = (
+            nltk.sent_tokenize(text)
+            if args.one_sentence_segmentation
             else split_into_segments(text, max_num_chars_in_segment)
+        )
         processed_segments = model.translate(segments, source_lang="en", target_lang="de")
         processed.append(SPACE_DEDUP.sub(' ', ' '.join(processed_segments)))
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -1,4 +1,5 @@
 import sys
+
 sys.path = ["/home/lab/NeMo"] + sys.path
 
 import json
@@ -22,7 +23,7 @@ MAX_SEQ_LENGTH_KEY = "max_seq_length"
 BEST_INIT = {"metric": 0, MAX_SEQ_LENGTH_KEY: None, "margin": None, "step": None}
 EMPTY_BEST = {
     "punctuation": {"f1_micro": BEST_INIT.copy(), "f1_macro": BEST_INIT.copy(), "accuracy": BEST_INIT.copy()},
-    "capitalization": {"f1": BEST_INIT.copy(), "accuracy": BEST_INIT.copy()}
+    "capitalization": {"f1": BEST_INIT.copy(), "accuracy": BEST_INIT.copy()},
 }
 
 
@@ -102,20 +103,17 @@ def save_all_plots(result, output_dir):
                     "lines": {},
                     "xlabel": MAX_SEQ_LENGTH_KEY,
                     "ylabel": m,
-                    "line_variable": "step"
+                    "line_variable": "step",
                 }
                 for step in result[task]["margin"][margin]["step"].keys():
                     for i, msl in enumerate(result[task]["margin"][margin]["step"][step][MAX_SEQ_LENGTH_KEY]):
                         init_value = {
-                             "lines": {
-                                 step: {
-                                     "x": [margin],
-                                     "y": [result[task]["margin"][margin]["step"][step][m][i]]
-                                 },
-                             },
-                             "xlabel": "margin",
-                             "ylabel": m,
-                             "line_variable": "step",
+                            "lines": {
+                                step: {"x": [margin], "y": [result[task]["margin"][margin]["step"][step][m][i]]},
+                            },
+                            "xlabel": "margin",
+                            "ylabel": m,
+                            "line_variable": "step",
                         }
                         if msl not in data_for_seq_len_fixed_plots:
                             data_for_seq_len_fixed_plots[msl] = {m: init_value}
@@ -126,7 +124,8 @@ def save_all_plots(result, output_dir):
                         else:
                             data_for_seq_len_fixed_plots[msl][m]["lines"][step]['x'].append(margin)
                             data_for_seq_len_fixed_plots[msl][m]["lines"][step]['y'].append(
-                                result[task]["margin"][margin]["step"][step][m][i])
+                                result[task]["margin"][margin]["step"][step][m][i]
+                            )
                     data_for_margin_fixed_plot["lines"][step] = {
                         "x": result[task]["margin"][margin]["step"][step][MAX_SEQ_LENGTH_KEY],
                         "y": result[task]["margin"][margin]["step"][step][m],
@@ -177,10 +176,7 @@ def main():
         labels_text = f.read()
     model = PunctuationCapitalizationModel.from_pretrained("punctuation_en_bert")
     if args.continue_from is None:
-        result = {
-            "punctuation": {"margin": {}},
-            "capitalization": {"margin": {}}
-        }
+        result = {"punctuation": {"margin": {}}, "capitalization": {"margin": {}}}
         best = deepcopy(EMPTY_BEST)
     else:
         with args.continue_from.open() as f:
