@@ -7,7 +7,7 @@ from io import StringIO
 from math import ceil
 from pathlib import Path
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
 
 logging.basicConfig(level="INFO", format='%(levelname)s -%(asctime)s - %(name)s - %(message)s')
@@ -18,6 +18,9 @@ random.seed(42)
 
 EUROPARL_LINE = re.compile(r"^(.+)(ep(?:-[0-9]{2}){3}(?:-[0-9]{3})?)")
 NEWS_COMMENTARY_LOCATION_LINE = re.compile(r"^[A-Z0-9 ]+ – ")
+WORD = re.compile(r"\W*\b(?:\w+(?:-\w+)*(?:'\w+)?)\b\W*")
+STRIP_START = re.compile(r"^\W+")
+STRIP_END = re.compile(r"\W+$")
 SUPPORTED_CORPUS_TYPES = ["europarl", "news-commentary", "TED", "rapid"]
 SENTENCE_ENDINGS = ".?!"
 
@@ -84,7 +87,7 @@ def get_args():
         "dataset size and uniform distribution of segment lengths in dataset, distribution will not be uniform: "
         "Probably number of long and short segments will be less than number of segments with average length.",
         type=float,
-        defaut=20.0,
+        default=20.0,
     )
     parser.add_argument(
         "--clean_data_dir",
@@ -128,7 +131,8 @@ def preprocess_ted(text):
         doc_id = doc["docid"]
         title = doc.find("title").text
         key = "TED_" + doc_id + "._" + title
-        result[key] = [line.strip() for line in doc.text.split('\n') if line.strip()]
+        text = ''.join([e for e in doc if isinstance(e, NavigableString)]).strip()
+        result[key] = [line.strip() for line in text.split('\n') if line.strip()]
     return result
 
 
@@ -141,11 +145,11 @@ def preprocess_rapid(text):
         for unit in file.findAll("unit"):
             unit_id = unit["id"]
             segment = unit.find("segment")
-            source = segment("source")
-            target = segment("target")
-            if source['lang'] == "en":
+            source = segment.find("source")
+            target = segment.find("target")
+            if source['xml:lang'] == "en":
                 text = source.text
-            elif target["lang"] == "en":
+            elif target["xml:lang"] == "en":
                 text = target.text
             else:
                 raise ValueError(
@@ -156,7 +160,7 @@ def preprocess_rapid(text):
                 file_utterances.append(text)
         if file_utterances:
             result["rapid_file_" + file_id] = file_utterances
-    return []
+    return result
 
 
 def preprocess_news_commentary(text):
@@ -169,9 +173,7 @@ def preprocess_news_commentary(text):
         if line:
             if line_idx == 1:
                 location_string = NEWS_COMMENTARY_LOCATION_LINE.match(line)
-                if location_string is None:
-                    logging.warning(f"No location was found for discussion {discussion_count}")
-                else:
+                if location_string is not None:
                     line = line[location_string.span()[1]:]
                 discussion_text.append(line)
             elif line_idx > 1:
@@ -183,6 +185,18 @@ def preprocess_news_commentary(text):
             discussion_count += 1
             line_idx = 0
     return result
+
+
+def cut_words(s, start_word, num_words):
+    words = WORD.findall(s)
+    s = ''.join(words[start_word : start_word + num_words])
+    ss = STRIP_START.match(s)
+    if ss is not None:
+        s = s[ss.span()[1]:]
+    se = STRIP_END.match(s)
+    if se is not None:
+        s = s[:se.span()[0]]
+    return s
 
 
 def add_docs(all_docs, file_docs, file_name):
@@ -212,7 +226,7 @@ def arrange_sentences_by_number_of_words(docs, sequence_length_range):
         for start_sentence_i, sentence in enumerate(doc):
             for end_sentence_i in range(start_sentence_i + 1, len(doc)):
                 n_words = sum([len(doc[i].split()) for i in range(start_sentence_i, end_sentence_i)])
-                if n_words > sequence_length_range[1]:
+                if n_words >= sequence_length_range[1] or n_words < sequence_length_range[0]:
                     break
                 result[n_words].append((doc_id, start_sentence_i, end_sentence_i))
     return result
@@ -225,37 +239,51 @@ def select_close_to_uniform_distribution(
     remaining_by_docs = {doc_id: set(range(len(s))) for doc_id, s in all_docs.items()}
     number_of_sentences_by_number_of_words = sorted([(len(v), k) for k, v in sentences_by_number_of_words.items()])
     number_of_words_stats = []
+    min_number_of_sentences_for_sentence_len = ceil(
+        planned_number_of_segments
+        / len(sentences_by_number_of_words)
+        / 100
+        * percentage_of_segments_with_intact_sentences
+    )
     for i, (n, len_) in enumerate(number_of_sentences_by_number_of_words):
-        min_number_of_sentences_for_sentence_len = ceil(
-            planned_number_of_segments
-            / (len(sentences_by_number_of_words) - i)
-            / 100
-            * percentage_of_segments_with_intact_sentences
-        )
-        tmp = sentences_by_number_of_words[len_] if n < min_number_of_sentences_for_sentence_len \
-            else random.sample(sentences_by_number_of_words[len_], min_number_of_sentences_for_sentence_len)
+        if n < min_number_of_sentences_for_sentence_len:
+            tmp = sentences_by_number_of_words[len_]
+            planned_number_of_segments -= len(tmp) * int(100 / percentage_of_segments_with_intact_sentences)
+            min_number_of_sentences_for_sentence_len = ceil(
+                planned_number_of_segments
+                / (len(sentences_by_number_of_words) - i)
+                / 100
+                * percentage_of_segments_with_intact_sentences
+            )
+        else:
+            tmp = random.sample(sentences_by_number_of_words[len_], min_number_of_sentences_for_sentence_len)
         result += tmp
         number_of_words_stats.append((len_, len(tmp)))
         for doc_id, start_i, end_i in tmp:
             if doc_id not in remaining_by_docs:
                 remaining_by_docs[doc_id] = set()
-            remaining_by_docs[doc_id].difference(range(start_i, end_i))
-        planned_number_of_segments -= len(tmp)
+            remaining_by_docs[doc_id].difference_update(range(start_i, end_i))
     return result, dict(sorted(number_of_words_stats)), remaining_by_docs
 
 
 def calculate_how_many_remain_to_cut(number_of_words_stats, size, percentage_segments_with_intact_sentences):
-    result = {
-        k: ceil(v * (100 - percentage_segments_with_intact_sentences) / percentage_segments_with_intact_sentences)
-        for k, v in number_of_words_stats.items()
-    }
+    if percentage_segments_with_intact_sentences > 0:
+        factor = (100 - percentage_segments_with_intact_sentences) / percentage_segments_with_intact_sentences
+        result = {k: ceil(v * factor) for k, v in number_of_words_stats.items()}
+    else:
+        n = ceil(size / len(number_of_words_stats))
+        result = {k: n for k in number_of_words_stats}
     keys = sorted(result.keys(), key=lambda x: -number_of_words_stats[x])
     total = sum(number_of_words_stats.values()) + sum(result.values())
     key_i = 0
     while total > size:
-        total -= 1
-        result[keys[key_i]] -= 1
+        if result[keys[key_i]] > 0:
+            total -= 1
+            result[keys[key_i]] -= 1
         key_i = (key_i + 1) % len(keys)
+    for k in keys:
+        if result[k] == 0:
+            del result[k]
     return result
 
 
@@ -270,34 +298,36 @@ def create_not_whole_sentence_segments(
         percentage_segments_with_intact_sentences
     )
     nw_i = 0
-    done = False
+    done = not bool(yet_to_cut_by_number_of_words)
     while not done:
         for doc_id, remaining in remaining_by_docs.items():
-            rem_copy = remaining.copy()
+            next_sentence_i = -1
             for i in remaining:
-                len_ = len(all_docs[doc_id][i])
-                if len_ > 1:
-                    shift = random.randint(1, len_ // 2)
+                len_ = len(all_docs[doc_id][i].split())
+                if i >= next_sentence_i and len_ > 1:
+                    shift = random.randint(0, len_ // 2)
                     text = all_docs[doc_id][i]
-                    to_remove = [i, i + 1]
+                    num_words = len(WORD.findall(text))
+                    next_sentence_i = i + 1
                     number_of_words = list(yet_to_cut_by_number_of_words.keys())
-                    while shift + number_of_words[nw_i] < len(text) and to_remove[-1] < len(all_docs[doc_id]):
-                        text += " " + all_docs[doc_id][to_remove[-1]]
-                        to_remove.append(to_remove[-1] + 1)
-                    if shift + number_of_words[nw_i] < len(text):
-                        result.append(text[shift : shift + number_of_words[nw_i]])
+                    nw_i %= len(number_of_words)
+                    while shift + number_of_words[nw_i] + 1 > num_words and next_sentence_i < len(all_docs[doc_id]):
+                        text += ' ' + all_docs[doc_id][next_sentence_i]
+                        num_words += len(WORD.findall(all_docs[doc_id][next_sentence_i]))
+                        next_sentence_i += 1
+                    if shift + number_of_words[nw_i] < num_words:
+                        if shift + number_of_words[nw_i] == num_words and shift == 0:
+                            shift += 1
+                        result.append(cut_words(text, shift, number_of_words[nw_i]))
                         yet_to_cut_by_number_of_words[number_of_words[nw_i]] -= 1
                         if yet_to_cut_by_number_of_words[number_of_words[nw_i]] == 0:
                             del yet_to_cut_by_number_of_words[number_of_words[nw_i]]
                             if not yet_to_cut_by_number_of_words:
                                 done = True
                                 break
-                        rem_copy.difference_update(to_remove)
-                        nw_i = (nw_i + 1) % len(number_of_words)
+                        nw_i += 1
                     else:
                         break
-                else:
-                    rem_copy.discard(i)
             if done:
                 break
         remaining_by_docs = {doc_id: set(range(len(doc))) for doc_id, doc in all_docs.items()}
@@ -317,6 +347,7 @@ def main():
     all_docs = {}
     number_of_sentences_in_input = 0
     for corpus_type, file_path in zip(args.corpus_types, args.input_files):
+        logging.info(f"Processing file {file_path}..")
         with file_path.open() as f:
             if corpus_type == SUPPORTED_CORPUS_TYPES[0]:
                 file_docs = preprocess_europarl(f.read())
@@ -335,13 +366,13 @@ def main():
                 with (args.clean_data_dir / Path(file_path.name)).open('w') as f:
                     f.write(create_dataset_string(file_docs))
             add_docs(all_docs, file_docs, file_path)
-            number_of_sentences_in_input += sum([len(doc) for doc in file_docs])
+            number_of_sentences_in_input += sum([len(doc) for doc in file_docs.values()])
     if args.size is None:
         args.size = number_of_sentences_in_input
     sentences_by_number_of_words = arrange_sentences_by_number_of_words(all_docs, args.sequence_length_range)
-    if sum([len(x) for x in sentences_by_number_of_words.values()]) < args.size * args.percentage_segments_with_intact_sentences:
+    if sum([len(x) for x in sentences_by_number_of_words.values()]) < args.size * args.percentage_segments_with_intact_sentences / 100:
         raise ValueError(
-            f"Cannot find enough segments consisting of whole segments to build dataset with {args.size} segments "
+            f"Cannot find enough segments consisting of whole sentences to build dataset with {args.size} segments "
             f"and at least {args.percentage_segments_with_intact_sentences}% segments consisting of whole sentences. "
             f"Try to reduce dataset size of parameter `--percentage_segments_with_intact_sentences"
         )
@@ -358,17 +389,20 @@ def main():
         args.percentage_segments_with_intact_sentences,
     )
     random.shuffle(result)
+    if args.dev_size > len(result):
+        raise ValueError(f"Parameter `--dev_size={args.dev_size}` is less than size of all dataset ({len(result)})")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    with (args.output_dir / Path("dev.txt")).open('w') as f:
-        for i in range(args.dev_size):
-            f.write(result[i] + '\n')
     test_size = int(args.size * args.test_ratio / 100)
     if test_size > 0:
         with (args.output_dir / Path("test.txt")).open('w') as f:
-            for i in range(args.dev_size, args.test_size + args.dev_size):
+            for i in range(args.dev_size):
+                f.write(result[i] + '\n')
+    if args.dev_size > 0:
+        with (args.output_dir / Path("dev.txt")).open('w') as f:
+            for i in range(test_size, test_size + args.dev_size):
                 f.write(result[i] + '\n')
     with (args.output_dir / Path("train.txt")).open('w') as f:
-        for i in range(args.dev_size + args.test_size, args.size):
+        for i in range(args.dev_size + test_size, args.size):
             f.write(result[i] + '\n')
 
 
